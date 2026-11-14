@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" type="image/png" href="icons/mon-mur.png">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/expand.css">
+  <title>Mon Mur · Murs</title>
+</head>
+<body class="wall-layout face-filter-initializing">
+  <main>
+    <aside class="sidebar" aria-label="Navigation principale">
+      <a class="logo" href="wall.html"><img class="app-logo" src="icons/mon-mur.png" width="32" height="32" alt=""> <span>Mon Mur</span></a>
+      <nav class="side-nav">
+        <a href="wall.html" aria-current="page" data-count-key="walls"><span class="side-icon">▦</span><span class="side-label">Murs</span><span class="sidebar-badge" data-badge-for="walls" aria-hidden="true" hidden></span></a>
+        <a href="sources.html" data-count-key="sources"><span class="side-icon">◉</span><span class="side-label">Sources</span><span class="sidebar-badge" data-badge-for="sources" aria-hidden="true" hidden></span></a><a href="discovery.html" data-count-key="discovery"><span class="side-icon">⌕</span><span class="side-label">Découverte</span><span class="sidebar-badge" data-badge-for="discovery" aria-hidden="true" hidden></span></a>
+        <a href="likes.html" data-count-key="likes"><span class="side-icon">♡</span><span class="side-label">J’aime</span><span class="sidebar-badge" data-badge-for="likes" aria-hidden="true" hidden></span></a>
+        <a href="wall.html?wall=auto-later" data-count-key="later"><span class="side-icon">♧</span><span class="side-label">À plus tard</span><span class="sidebar-badge" data-badge-for="later" aria-hidden="true" hidden></span></a>
+        <a href="wall.html?wall=auto-read" data-count-key="archived"><span class="side-icon">▣</span><span class="side-label">Archivés</span><span class="sidebar-badge" data-badge-for="archived" aria-hidden="true" hidden></span></a>
+      </nav>
+      <nav class="side-bottom"><a href="settings.html?onboarding=1" aria-label="Relire le guide de Mon Mur" title="Relire le guide de Mon Mur"><span class="side-icon">?</span><span>Guide et aide</span></a><a href="settings.html"><span class="side-icon">⚙</span><span>Préférences</span></a></nav>
+    </aside>
+    <div class="app-main">
+      <div id="wallSticky" class="wall-sticky">
+      <nav class="wall-navigation" aria-label="Navigation des murs"><div id="wallTabs" class="wall-tabs"></div><button id="wallAddButton" class="wall-add-button" type="button" aria-label="Créer un mur" title="Créer un mur">＋</button><details id="wallMoreMenu" class="wall-more-menu" hidden><summary aria-label="Afficher les autres murs" title="Afficher les autres murs">…</summary><div id="wallMoreItems" class="wall-more-items" aria-label="Autres murs"></div></details></nav>
+      <div class="feedhead"><div class="wall-summary"><h1 id="wallTitle">Actus</h1><p id="status" class="muted">Chargement…</p></div><div class="actions"><select id="mode" aria-label="Mode de classement"><option value="chronological">Chronologique</option><option value="priority">Mes priorités</option></select><button id="refresh" aria-label="Actualiser le mur">Actualiser</button><button id="markAllRead" class="icon-action" type="button" aria-label="Tout marquer comme lu" title="Tout marquer comme lu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 12 4 4L17 6M11 12l4 4L22 8"/></svg></button><button id="toggleNav" class="nav-toggle" type="button" aria-label="Réduire la navigation" title="Réduire la navigation" aria-expanded="true" aria-controls="wallTabs"><span aria-hidden="true">⌃</span></button></div></div>
+      </div>
+    <section class="feed" aria-label="Mur d’actualités">
+      <button id="newItems" class="new-items" hidden></button>
+      <section id="cards" aria-live="polite"></section>
+      <section id="emptyState" class="empty" hidden><h2 id="emptyTitle">Aucun article pour le moment</h2><p id="empty"></p><ol id="emptySteps" hidden><li>Visitez un site que vous aimez</li><li>Cliquez sur l’icône Mon Mur dans Firefox</li><li>Choisissez un mur et confirmez</li></ol><a id="emptyAddSource" class="primary-button" href="sources.html">Gérer mes sources</a><p id="emptyHint" hidden>Vous pourrez ensuite personnaliser vos murs dans Préférences.</p></section>
+      <div id="sentinel"></div>
+    </section>
+    <button id="returnToTop" class="icon-action" type="button" aria-label="Retour en haut" title="Retour en haut" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17V3m0 0 7 7m-7-7-7 7M5 21h14"/></svg></button>
+    </div>
+  </main>
+  <dialog id="markAllReadDialog" aria-labelledby="markAllReadQuestion"><form method="dialog"><p id="markAllReadQuestion"></p><div class="dialog-actions"><button value="cancel">Annuler</button><button value="confirm" class="confirm-action">Tout marquer comme lu</button></div></form></dialog>
+  <script src="js/core.js"></script><script src="js/wall-icons.js"></script><script src="js/affiliate-detection.js"></script>
+  <script src="js/face-filter.js"></script><script src="js/language-detection.js"></script><script src="js/persuasion-detection.js"></script><script src="js/persuasion-annotations.js"></script><script src="js/clickbait-detection.js"></script><script src="js/clickbait-annotations.js"></script><script src="js/video-errors.js"></script><script src="js/article-speech.js"></script><script src="js/wall.js"></script>
+<script src="js/sidebar.js"></script></body>
+</html>

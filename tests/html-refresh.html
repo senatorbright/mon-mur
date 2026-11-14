@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>HTML refresh regression test</title>
+<pre id="result">RUNNING</pre>
+<script src="../js/core.js"></script>
+<script>
+(() => {
+  const result = document.querySelector("#result");
+  const source = { id: "french-stream", pageUrl: "https://french-stream.net/films/" };
+  const catalog = (cards) => `<!doctype html><title>Films</title><main><div id="dle-content">${cards.map(({ id, title, year }) => `
+    <div class="short"><div class="short-in nl">
+      <div class="short-year"><a>${year}</a></div>
+      <a class="short-poster" href="/index.php?newsid=${id}"><img src="https://image.tmdb.org/t/p/w300/${id}.jpg" alt="${title} affiche"></a>
+      <div class="short-title">${title}</div>
+    </div></div>`).join("")}</div></main>`;
+  try {
+    const firstRead = MMP.parseHtmlArticles(catalog([
+      { id: "101", title: "Film déjà connu", year: "2025" },
+      { id: "102", title: "Film précédent", year: "2026" },
+      { id: "100", title: "Film plus ancien", year: "2024" }
+    ]), source.pageUrl, source);
+    const nextRead = MMP.parseHtmlArticles(catalog([
+      { id: "103", title: "Nouveau film", year: "2026" },
+      { id: "101", title: "Film déjà connu", year: "2025" },
+      { id: "102", title: "Film précédent", year: "2026" }
+    ]), source.pageUrl, source);
+    const oldIds = new Set(firstRead.map(article => article.id));
+    const newlyDiscovered = nextRead.filter(article => !oldIds.has(article.id));
+    if (firstRead.length !== 3 || nextRead.length !== 3) throw new Error(`Expected three parsed films per read; got ${firstRead.length} and ${nextRead.length}`);
+    if (newlyDiscovered.length !== 1 || newlyDiscovered[0].title !== "Nouveau film") throw new Error("A newly listed film was not detected by its stable article URL");
+    if (!nextRead.every(article => article.dateIsFallback && Number.isFinite(article.publishedAt))) throw new Error("Missing publication dates were not handled as discovery dates");
+    result.textContent = "PASS — a new HTML film is detected across overlapping reads without publication dates";
+    document.title = "PASS";
+  } catch (error) {
+    result.textContent = `FAIL — ${error.stack || error}`;
+    document.title = "FAIL";
+  }
+})();
+</script>

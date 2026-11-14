@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" type="image/png" href="icons/mon-mur.png">
+  <link rel="stylesheet" href="css/app.css">
+  <title>Mon Mur · Découverte</title>
+</head>
+<body>
+  <aside class="sidebar" aria-label="Navigation principale">
+    <a class="logo" href="wall.html"><img class="app-logo" src="icons/mon-mur.png" width="32" height="32" alt=""> <span>Mon Mur</span></a>
+    <nav class="side-nav">
+      <a href="wall.html" data-count-key="walls"><span class="side-icon">▦</span><span class="side-label">Murs</span><span class="sidebar-badge" data-badge-for="walls" aria-hidden="true" hidden></span></a>
+      <a href="sources.html" data-count-key="sources"><span class="side-icon">◉</span><span class="side-label">Sources</span><span class="sidebar-badge" data-badge-for="sources" aria-hidden="true" hidden></span></a>
+      <a href="discovery.html" aria-current="page" data-count-key="discovery"><span class="side-icon">⌕</span><span class="side-label">Découverte</span><span class="sidebar-badge" data-badge-for="discovery" aria-hidden="true" hidden></span></a>
+      <a href="likes.html" data-count-key="likes"><span class="side-icon">♡</span><span class="side-label">J’aime</span><span class="sidebar-badge" data-badge-for="likes" aria-hidden="true" hidden></span></a>
+      <a href="wall.html?wall=auto-later" data-count-key="later"><span class="side-icon">♧</span><span class="side-label">À plus tard</span><span class="sidebar-badge" data-badge-for="later" aria-hidden="true" hidden></span></a>
+      <a href="wall.html?wall=auto-read" data-count-key="archived"><span class="side-icon">▣</span><span class="side-label">Archivés</span><span class="sidebar-badge" data-badge-for="archived" aria-hidden="true" hidden></span></a>
+    </nav>
+    <nav class="side-bottom"><a href="settings.html?onboarding=1" aria-label="Relire le guide de Mon Mur" title="Relire le guide de Mon Mur"><span class="side-icon">?</span><span>Guide et aide</span></a><a href="settings.html"><span class="side-icon">⚙</span><span>Préférences</span></a></nav>
+  </aside>
+  <div class="app-main">
+    <main class="page discovery-page">
+      <header><h1>Découverte</h1><p class="muted">Les nouvelles sources RSS/Atom trouvées par tes recherches apparaissent ici jusqu’à ce que tu les traites ou les ajoutes à un mur.</p></header>
+      <section class="panel discovery-panel" aria-labelledby="searchTitle">
+        <h2 id="searchTitle">Rechercher des sources</h2>
+        <form id="discoveryForm" class="inline-form">
+          <label>Mots-clés<input id="discoveryTerms" required placeholder="Ex. batteries LiFePO4"></label>
+          <label>Sujet prioritaire existant<select id="discoveryPriority"><option value="">Aucun</option></select></label>
+          <button id="discoverySubmit" class="primary-button">Rechercher</button>
+        </form>
+        <p id="discoveryStatus" class="muted" role="status" aria-live="polite"></p>
+        <progress id="discoveryProgress" max="1" value="0" hidden></progress>
+        <button id="grantDiscoveryAccess" type="button" class="secondary-button" hidden></button>
+      </section>
+      <section class="panel discovery-list-panel" aria-labelledby="pendingTitle">
+        <div class="discovery-section-heading"><h2 id="pendingTitle">À examiner <span id="pendingCount">(0)</span></h2><label class="discovery-filter"><span class="visually-hidden">Filtrer les sources</span><input id="pendingFilter" type="search" placeholder="Filtrer les sources…"></label></div>
+        <p class="muted discovery-caption">Sources découvertes à partir de tes recherches</p>
+        <div id="pendingDiscoveries" aria-live="polite"></div>
+      </section>
+      <details class="panel explored-panel">
+        <summary><strong>Résultats de recherche</strong> <span id="exploredCount" class="muted">0 domaines · 0 flux analysés · 0 nouvelles sources</span></summary>
+        <div id="exploredResults"><p class="muted">Les domaines examinés apparaîtront ici après une recherche.</p></div>
+      </details>
+      <section class="panel processed-panel" aria-labelledby="processedTitle">
+        <div class="discovery-section-heading"><h2 id="processedTitle">Historique des sources <span id="processedCount" class="muted"></span></h2><label class="discovery-filter"><span class="visually-hidden">Rechercher dans l’historique</span><input id="processedFilter" type="search" placeholder="Rechercher dans l’historique…"></label></div>
+        <details id="processedDetails"><summary>Afficher les sources traitées ou déjà suivies</summary><div id="processedSources"></div></details>
+      </section>
+    </main>
+  </div>
+  <script src="js/core.js"></script>
+  <script src="js/discovery.js"></script>
+  <script src="js/sidebar.js"></script>
+</body>
+</html>

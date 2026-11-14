@@ -1,0 +1,77 @@
+{
+  "manifest_version": 3,
+  "name": "Mon Mur",
+  "version": "5.4.0",
+  "description": "Des murs thématiques locaux pour organiser les articles de vos sources.",
+  "icons": {
+    "32": "icons/mon-mur-32.png",
+    "48": "icons/mon-mur-48.png",
+    "96": "icons/mon-mur-96.png",
+    "128": "icons/mon-mur-128.png"
+  },
+  "permissions": [
+    "storage",
+    "alarms",
+    "activeTab",
+    "scripting",
+    "tabHide",
+    "webRequest",
+    "webRequestBlocking"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://www.youtube-nocookie.com/*",
+    "https://search.joinpeertube.org/*",
+    "https://api.bsky.app/*",
+    "https://public.api.bsky.app/*",
+    "https://news.google.com/*",
+    "https://*.linkedin.com/*",
+    "https://cdn.bsky.app/*",
+    "https://archive.org/*",
+    "https://*.archive.org/*"
+  ],
+  "optional_host_permissions": [
+    "<all_urls>",
+    "https://duckduckgo.com/*",
+    "https://api.crowdbunker.com/*",
+    "https://rumble.com/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; frame-src 'self' https:; media-src https: blob:;"
+  },
+  "action": {
+    "default_title": "Mon Mur",
+    "default_icon": "icons/mon-mur.png",
+    "default_popup": "popup.html",
+    "default_area": "navbar"
+  },
+  "background": {
+    "scripts": [
+      "js/db.js",
+      "js/core.js",
+      "js/youtube.js",
+      "js/linkedin-news.js",
+      "js/affiliate-detection.js",
+      "vendor/Readability.js",
+      "js/background.js"
+    ]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "mon-mur-presse-toolbar@local",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ],
+        "optional": [
+          "searchTerms",
+          "websiteContent"
+        ]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  }
+}

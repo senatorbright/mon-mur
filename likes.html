@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" type="image/png" href="icons/mon-mur.png">
+  <link rel="stylesheet" href="css/app.css">
+  <title>Mon Mur · J’aime</title>
+</head>
+<body>
+  <aside class="sidebar" aria-label="Navigation principale">
+  <a class="logo" href="wall.html"><img class="app-logo" src="icons/mon-mur.png" width="32" height="32" alt=""> <span>Mon Mur</span></a>
+  <nav class="side-nav">
+    <a href="wall.html" data-count-key="walls"><span class="side-icon">▦</span><span class="side-label">Murs</span><span class="sidebar-badge" data-badge-for="walls" aria-hidden="true" hidden></span></a>
+    <a href="sources.html"  data-count-key="sources"><span class="side-icon">◉</span><span class="side-label">Sources</span><span class="sidebar-badge" data-badge-for="sources" aria-hidden="true" hidden></span></a><a href="discovery.html" data-count-key="discovery"><span class="side-icon">⌕</span><span class="side-label">Découverte</span><span class="sidebar-badge" data-badge-for="discovery" aria-hidden="true" hidden></span></a>
+    <a href="likes.html" aria-current="page" data-count-key="likes"><span class="side-icon">♡</span><span class="side-label">J’aime</span><span class="sidebar-badge" data-badge-for="likes" aria-hidden="true" hidden></span></a>
+    <a href="wall.html?wall=auto-later" data-count-key="later"><span class="side-icon">♧</span><span class="side-label">À plus tard</span><span class="sidebar-badge" data-badge-for="later" aria-hidden="true" hidden></span></a>
+    <a href="wall.html?wall=auto-read" data-count-key="archived"><span class="side-icon">▣</span><span class="side-label">Archivés</span><span class="sidebar-badge" data-badge-for="archived" aria-hidden="true" hidden></span></a>
+  </nav>
+  <nav class="side-bottom"><a href="settings.html?onboarding=1" aria-label="Relire le guide de Mon Mur" title="Relire le guide de Mon Mur"><span class="side-icon">?</span><span>Guide et aide</span></a><a href="settings.html"><span class="side-icon">⚙</span><span>Préférences</span></a></nav>
+</aside>
+<div class="app-main">
+  <main class="page likes-page">
+    <h1>J’aime</h1>
+    <div class="likes-toolbar">
+      <p id="likesCount" class="muted" aria-live="polite"></p>
+      <label for="pageSize">Par page</label>
+      <select id="pageSize" aria-label="Nombre de recommandations par page">
+        <option value="50">50</option><option value="100">100</option><option value="250">250</option><option value="500">500</option><option value="1000">1000</option>
+      </select>
+    </div>
+    <div class="likes-table-scroll" id="likesTableWrap" hidden>
+      <table class="likes-table">
+        <thead>
+          <tr class="likes-head">
+            <th><button type="button" class="likes-sort" data-sort="title">Titre</button></th>
+            <th><button type="button" class="likes-sort" data-sort="source">Source</button></th>
+            <th><button type="button" class="likes-sort" data-sort="likedAt">J’aime le</button></th>
+            <th><button type="button" class="likes-sort" data-sort="publishedAt">Publié le</button></th>
+            <th><button type="button" class="likes-sort" data-sort="language">Langue</button></th>
+            <th><span class="sr-only">Actions</span></th>
+          </tr>
+          <tr class="likes-filters">
+            <th><input type="search" data-filter="title" placeholder="Filtrer…" aria-label="Filtrer par titre"></th>
+            <th><input type="search" data-filter="source" placeholder="Filtrer…" aria-label="Filtrer par source"></th>
+            <th><input type="search" data-filter="likedAt" placeholder="Filtrer…" aria-label="Filtrer par date du J’aime"></th>
+            <th><input type="search" data-filter="publishedAt" placeholder="Filtrer…" aria-label="Filtrer par date de publication"></th>
+            <th><input type="search" data-filter="language" placeholder="Filtrer…" aria-label="Filtrer par langue"></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="likesRows"></tbody>
+      </table>
+    </div>
+    <p id="likesEmpty" class="empty" hidden>Aucun contenu aimé pour le moment.</p>
+    <p id="likesNoResults" class="empty" hidden>Aucun résultat pour ces filtres.</p>
+    <nav id="likesPagination" class="likes-pagination" aria-label="Pagination des J’aime" hidden>
+      <button id="previousPage" type="button">Précédent</button>
+      <span id="pageInfo" aria-live="polite"></span>
+      <button id="nextPage" type="button">Suivant</button>
+    </nav>
+  </main>
+</div>
+  <script src="js/core.js"></script>
+  <script src="js/likes.js"></script>
+<script src="js/sidebar.js"></script></body>
+</html>

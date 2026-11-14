@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" type="image/png" href="icons/mon-mur.png">
+  <link rel="stylesheet" href="css/app.css">
+  <title>Mon Mur · Historique des acquisitions</title>
+</head>
+<body>
+<aside class="sidebar" aria-label="Navigation principale">
+  <a class="logo" href="wall.html"><img class="app-logo" src="icons/mon-mur.png" width="32" height="32" alt=""> <span>Mon Mur</span></a>
+  <nav class="side-nav">
+    <a href="wall.html" data-count-key="walls"><span class="side-icon">▦</span><span class="side-label">Murs</span><span class="sidebar-badge" data-badge-for="walls" aria-hidden="true" hidden></span></a>
+    <a href="sources.html" data-count-key="sources"><span class="side-icon">◉</span><span class="side-label">Sources</span><span class="sidebar-badge" data-badge-for="sources" aria-hidden="true" hidden></span></a><a href="discovery.html" data-count-key="discovery"><span class="side-icon">⌕</span><span class="side-label">Découverte</span><span class="sidebar-badge" data-badge-for="discovery" aria-hidden="true" hidden></span></a>
+    <a href="likes.html" data-count-key="likes"><span class="side-icon">♡</span><span class="side-label">J’aime</span><span class="sidebar-badge" data-badge-for="likes" aria-hidden="true" hidden></span></a>
+    <a href="wall.html?wall=auto-later" data-count-key="later"><span class="side-icon">♧</span><span class="side-label">À plus tard</span><span class="sidebar-badge" data-badge-for="later" aria-hidden="true" hidden></span></a>
+    <a href="wall.html?wall=auto-read" data-count-key="archived"><span class="side-icon">▣</span><span class="side-label">Archivés</span><span class="sidebar-badge" data-badge-for="archived" aria-hidden="true" hidden></span></a>
+  </nav>
+  <nav class="side-bottom"><a href="settings.html?onboarding=1"><span class="side-icon">?</span><span>Guide et aide</span></a><a href="settings.html?tab=data"><span class="side-icon">⚙</span><span>Préférences</span></a></nav>
+</aside>
+<div class="app-main"><main class="page history-page">
+  <header class="sources-page-header"><div><h1>Historique des acquisitions</h1><p class="muted">URL rencontrées sur les sept derniers jours, regroupées par source.</p></div><div class="history-page-actions"><button id="exportUrlHistory" type="button" class="primary-button">⇩&nbsp; Exporter toutes les URL (CSV)</button><a class="secondary-button" href="settings.html?tab=data">Retour à Données et accès</a><p id="historyStatus" class="muted inline-status" role="status" aria-live="polite"></p></div></header>
+  <section class="panel history-panel" aria-label="Filtres et résultats des acquisitions">
+    <div class="history-toolbar">
+      <label>Source<select id="historySource"><option value="">Toutes les sources</option></select></label>
+      <label>Mur<select id="historyWall"><option value="">Tous les murs</option></select></label>
+      <label>Trier par<select id="historySort"><option value="date">Date</option><option value="source">Source</option><option value="title">Titre</option><option value="wall">Mur</option></select></label>
+      <label class="history-search">Titre ou URL<input id="historySearch" type="search" placeholder="Rechercher…"></label>
+      <button id="exportFilteredUrlHistory" type="button" class="secondary-button">Exporter les résultats</button>
+    </div>
+    <p id="historySummary" class="history-source-counts" aria-live="polite">Chargement…</p>
+    <p class="history-scroll-hint" aria-hidden="true">Faites défiler horizontalement pour voir toutes les colonnes.</p>
+    <div class="history-table-wrap"><table class="history-table"><thead><tr><th>Date</th><th>Source</th><th>Titre</th><th>Mur</th><th>Acquisition</th><th>Mode</th><th>URL</th></tr></thead><tbody id="historyRows"></tbody></table></div>
+  </section>
+</main></div>
+<script src="js/url-history.js"></script><script src="js/sidebar.js"></script>
+</body>
+</html>

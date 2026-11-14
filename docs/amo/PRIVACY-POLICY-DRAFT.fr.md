@@ -1,0 +1,56 @@
+# Politique de confidentialité de Mon Mur — brouillon AMO
+
+> Brouillon interne à valider avant publication. Les recherches thématiques transmettent des mots-clés, classés comme données personnelles par les règles Mozilla; cette information doit être couverte par une politique accessible aux utilisateurs. Aucune URL publique n'est encore fournie dans le dépôt.
+
+## Données conservées dans Firefox
+
+Mon Mur conserve dans le profil Firefox les murs, filtres, préférences, sources choisies, articles récupérés, favoris, états de lecture et historique d'URL servant à éviter les doublons. Les réglages utilisent `browser.storage.local`; les articles et leurs contenus utilisent IndexedDB. La sauvegarde JSON téléchargeable contient les réglages et les sources, mais pas les articles ni les favoris. L'export CSV de l'historique contient les URL mémorisées, leur source et leur date de première rencontre.
+
+## Requêtes vers les services choisis
+
+Mon Mur n'utilise pas de serveur propre, de compte Mon Mur, de télémétrie ni de rapport d'erreurs à distance dans le code audité. Il ne collecte pas de données de façon centralisée. Pour fournir les fonctions activées par l'utilisateur, l'extension effectue néanmoins des requêtes réseau directement vers les domaines correspondants. Ces services reçoivent les données nécessaires à la requête et peuvent recevoir l'adresse IP et les informations techniques habituelles de la connexion, selon le fonctionnement du navigateur et du réseau. Ils peuvent traiter ou conserver les requêtes selon leurs propres règles; Mon Mur ne contrôle pas ce traitement ultérieur :
+
+- Les URL de pages et de flux RSS/Atom ajoutées par l'utilisateur sont demandées aux sites concernés, à l'ajout, lors d'une actualisation manuelle ou à la fréquence choisie. Ces requêtes transmettent l'URL de la ressource au site qui l'héberge. Les pages d'articles peuvent aussi être demandées à leur ouverture. Ces téléchargements génériques n'incluent pas les cookies du navigateur ni les identifiants de session (`credentials: omit`). Lors de l'ajout d'une source depuis une page ouverte, Mon Mur peut lire le DOM de cette page à la demande de l'utilisateur afin de détecter le titre, l'adresse et les flux proposés. Les pages peuvent aussi charger des favicons, images, miniatures, lecteurs et autres ressources depuis leurs domaines d'origine.
+- Les sujets prioritaires (mots ou expressions saisis par l'utilisateur dans les préférences des murs) sont envoyés comme termes de recherche aux fournisseurs activés : YouTube (`search_query`), l'index PeerTube (`search`), Bluesky (`q`), CrowdBunker (`q`), Rumble (page de résultats) et Internet Archive (requête de métadonnées). Les collectes sont déclenchées à l'actualisation manuelle ou périodique lorsque les murs automatiques et les fournisseurs correspondants sont activés. Les résultats sont analysés puis stockés dans Firefox. Les requêtes partent directement vers ces services; elles ne sont pas envoyées au développeur ni à un serveur Mon Mur.
+- Sur un mur de type Cinéma, l'ouverture d'un article peut transmettre à AlloCiné son titre nettoyé comme requête de recherche. Wikipédia peut être consulté si AlloCiné ne fournit pas de résultat exploitable. Il s'agit d'un enrichissement déclenché par l'affichage de l'article sur ce mur. Le titre provenant d'un flux ou d'une page constitue à la fois le terme de recherche et du contenu de site. La recherche nécessite le consentement `searchTerms` et `websiteContent`.
+- Pour compléter les métadonnées d'une publication Bluesky déjà importée, son identifiant public AT URI peut être envoyé à l'API publique Bluesky.
+- La lecture d'une vidéo intégrée contacte sa plateforme lorsque l'utilisateur démarre le lecteur. Pour préparer un lecteur Rumble, l'adresse publique de la vidéo est envoyée à l'API oEmbed Rumble; PeerTube peut recevoir l'identifiant public de la vidéo pour en charger les détails. Les miniatures et autres images distantes sont chargées depuis leur domaine d'origine.
+
+Les murs créés manuellement servent à organiser les sources choisies et ne lancent pas à eux seuls de recherche thématique. Les requêtes sont lancées par l'utilisateur (ajout de source, lecture ou actualisation) ou par les collectes automatiques activées dans les préférences. Désactiver un mur automatique ou un fournisseur arrête les recherches correspondantes; l'actualisation périodique des sources RSS/pages se règle séparément. Mon Mur ne lit pas l'historique de navigation de Firefox et n'intercepte pas les recherches effectuées dans le navigateur. Il ne remplace pas non plus le moteur de recherche de Firefox. Les recherches par sujet sont des requêtes propres aux murs de l'extension, adressées aux plateformes activées. L'absence de collecte centralisée par Mon Mur n'empêche pas ces services tiers de recevoir les termes, l'adresse IP et les données techniques de connexion, ni de les traiter selon leurs politiques.
+
+## Détection locale des visages
+
+Le filtre facultatif télécharge localement les images autorisées puis exécute le modèle BlazeFace et le runtime MediaPipe embarqués dans l'extension. Le code audité ne transmet ni les images ni les détections à un service d'inférence distant.
+
+## Autorisations et contrôle
+
+L'accès à tous les sites est facultatif. L'utilisateur peut autoriser des domaines individuellement lors de l'ajout de sources; certains services automatiques et la lecture de contenus externes peuvent demander des autorisations supplémentaires. Les plateformes vidéo et sociales se règlent dans les préférences. Le manifeste déclare `searchTerms` pour les sujets transmis aux plateformes et `websiteContent` pour les titres de pages transmis à des services d'enrichissement; les deux catégories sont optionnelles. Le consentement aux recherches par sujet est vérifié avant toute collecte thématique. L'enrichissement cinéma vérifie les deux catégories avant d'envoyer un titre. Un refus ou un retrait bloque la requête qui dépend de l'autorisation manquante; les flux RSS et les fonctions locales restent utilisables. Révoquer un accès de site empêche également les requêtes qui en dépendent.
+
+## Catégories Firefox et consentement
+
+Les sujets prioritaires saisis dans Mon Mur sont placés dans les requêtes de recherche des plateformes vidéo, sociales et documentaires. Ces termes relèvent de `searchTerms`. Le titre d'un article récupéré depuis un flux ou une page peut aussi être envoyé à AlloCiné ou Wikipédia pour l'enrichissement cinéma. Comme il s'agit de contenu obtenu depuis un site et transmis comme requête, cet enrichissement est contrôlé par `searchTerms` et `websiteContent`. Les deux catégories sont optionnelles dans le manifeste; Firefox permet à l'utilisateur de les accorder ou de les retirer. Sans `searchTerms`, les recherches par sujet sont suspendues. Si l'une ou l'autre autorisation manque, l'enrichissement distant par titre est suspendu. Les flux configurés, le contenu déjà stocké et les fonctions locales restent disponibles. Les données sont adressées aux services concernés, sans transmission au développeur ni à un serveur Mon Mur.
+
+`searchTerms` décrit les recherches thématiques et les titres envoyés comme requêtes. `websiteContent` décrit les titres issus des pages ou flux utilisés par l'enrichissement cinéma; cette catégorie est maintenant déclarée et contrôlée dans le code. Les URL RSS/Atom sont choisies par l'utilisateur et demandées directement aux sites correspondants; elles ne sont pas lues dans l'historique Firefox. Le code audité n'accède pas à l'historique du navigateur et n'en transmet aucun journal. La définition de `browsingActivity` vise les informations sur les sites que l'utilisateur visite, notamment leurs URL, mais ne tranche pas explicitement le cas d'une URL de source configurée et demandée à son hébergeur pour obtenir le flux. Mon Mur ne déclare donc pas cette catégorie sans élément indiquant qu'il transmet des données d'activité de navigation; la requête transmet néanmoins l'URL au site qui fournit la source. Cette classification doit être évaluée par les reviewers, sans présenter la politique comme tranchée.
+
+Le manifeste déclare :
+
+```json
+"data_collection_permissions": {
+  "required": ["none"],
+  "optional": ["searchTerms", "websiteContent"]
+}
+```
+
+Firefox 140 et versions ultérieures expose les consentements dans `browser.permissions.getAll().data_collection`. Mon Mur fixe la version minimale à Firefox 140 sur ordinateur et 142 sur Android. Après un clic, les préférences et l'onboarding demandent `searchTerms` et `websiteContent` avec `browser.permissions.request({data_collection:["searchTerms","websiteContent"]})`. Les recherches thématiques vérifient `searchTerms`; les recherches d'enrichissement vérifient les deux catégories. En cas de refus ou de retrait, les requêtes qui en dépendent sont bloquées. `required: ["none"]` indique qu'aucune de ces catégories optionnelles n'est nécessaire avant le choix de l'utilisateur.
+
+**Réserve de politique résiduelle :** la section 6.1 interdit aux fonctions de recherche fournies ou chargées par une extension de transmettre des termes à un fournisseur tiers et d'intercepter des recherches destinées à un fournisseur tiers. Mon Mur ne fait pas d'interception de recherches Firefox, mais il envoie aux plateformes les sujets choisis pour alimenter ses murs automatiques. La documentation et le consentement permettent d'expliquer cette fonction; ils ne déterminent pas son acceptabilité au regard de la règle. Cette réserve doit rester visible pour la revue et ne doit pas être présentée comme résolue par le seul consentement.
+
+Références officielles : [taxonomie et consentement intégré Firefox](https://extensionworkshop.com/documentation/develop/firefox-builtin-data-consent/), [règles Mozilla sur le consentement des données](https://extensionworkshop.com/documentation/publish/add-on-policies/) et [`permissions.getAll()`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/permissions/getAll).
+
+## Contact et durée
+
+À compléter par l'éditeur avant AMO : identité ou contact de confidentialité, adresse publique et stable de cette politique et informations de support. Les données locales restent dans le profil Firefox jusqu'à leur suppression par l'utilisateur, à leur expiration selon les réglages, ou à la désinstallation/réinitialisation de l'extension. Firefox peut conserver des données de l'extension dans les sauvegardes du profil selon ses propres réglages.
+
+## Portée juridique à vérifier avant diffusion
+
+Ce document répond à la transparence Mozilla; il ne constitue pas une analyse juridique. Dans l'UE, les adresses IP reçues par les services tiers peuvent être des données personnelles (RGPD, considérant 30 et article 4); ces services déterminent leurs propres rôles et durées. Si l'éditeur détermine des finalités ou moyens de traitement au-delà du stockage local contrôlé par l'utilisateur, il devra évaluer ses obligations de responsable de traitement, notamment l'information de l'article 13, la base juridique, les droits, la conservation et les coordonnées. La situation dépend de l'identité et du rôle effectif de l'éditeur. Faire valider ces points avant publication; ne pas présenter ce brouillon comme avis juridique.

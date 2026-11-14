@@ -1,0 +1,32 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>RSS regression test</title>
+<pre id="result">RUNNING</pre>
+<script src="../js/core.js"></script>
+<script>
+(async () => {
+  const result = document.querySelector("#result");
+  try {
+    const xml = await (await fetch("fixtures/watchme.xml")).text();
+    const rawDoc = new DOMParser().parseFromString(xml, "application/xml");
+    if (!rawDoc.querySelector("parsererror")) throw new Error("Expected the original feed to fail strict XML parsing");
+    const normalized = MMP.normalizeFeedXml(xml);
+    const normalizedDoc = new DOMParser().parseFromString(normalized, "application/xml");
+    if (normalizedDoc.querySelector("parsererror")) throw new Error("Known undeclared namespaces were not repaired");
+    const entries = MMP.parseFeed(xml, "https://watch.me/feed.xml", { id: "watchme" }, true);
+    if (entries.length !== 10) throw new Error(`Expected 10 articles, received ${entries.length}`);
+    if (entries.some(article => !article.title || !article.canonicalUrl || article.summary !== "")) throw new Error("An article lost its required fields or gained an invalid summary");
+    if (entries.some(article => article.feedContentHtml !== "")) throw new Error("{full-story} was treated as article content");
+    if (new Set(entries.map(article => article.id)).size !== 10) throw new Error("Article deduplication identifiers collided");
+    let rejectedMalformed = false;
+    try { MMP.parseFeed("<rss><channel><item><title>bad</title></channel></rss>", "https://watch.me/feed.xml", { id: "bad" }); }
+    catch { rejectedMalformed = true; }
+    if (!rejectedMalformed) throw new Error("Malformed XML was accepted");
+    result.textContent = "PASS — 10 articles, empty descriptions allowed, placeholder ignored, invalid XML still rejected";
+    document.title = "PASS";
+  } catch (error) {
+    result.textContent = `FAIL — ${error.stack || error}`;
+    document.title = "FAIL";
+  }
+})();
+</script>

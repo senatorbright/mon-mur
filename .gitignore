@@ -1,0 +1,13 @@
+# Paquets et artefacts de construction générés
+*.xpi
+web-ext-artifacts/
+release/
+dist/
+
+# Fichiers locaux et systèmes d'exploitation
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+desktop.ini
