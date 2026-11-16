@@ -38,4 +38,4 @@ Le partage collectif des J’aime avec un mur automatique commun est une idée �
 
 ## État de la version 5.6.0
 
-La version 5.6.0 est publiée comme code source dans ce dépôt. Les essais manuels Firefox restent à effectuer; les archives locales sont non signées et ne constituent ni une signature Mozilla ni une soumission AMO. Consulter [BUILD-AND-REVIEW.fr.md](amo/BUILD-AND-REVIEW.fr.md) pour les contrôles de construction.
+La version 5.6.0 et ses archives sont préparées localement. La publication GitHub reste à effectuer. Les essais manuels Firefox restent également à effectuer; les archives locales sont non signées et ne constituent ni une signature Mozilla ni une soumission AMO. Consulter [BUILD-AND-REVIEW.fr.md](amo/BUILD-AND-REVIEW.fr.md) pour les contrôles de construction.
