@@ -1,6 +1,6 @@
 # Mon Mur
 
-> Projet personnel, prototype fonctionnel et cahier des charges vivant, réalisé à 100 % par « vibe coding ». Il répondait aux besoins de son auteur; il est partagé pour être examiné et amélioré par des personnes qui souhaitent contribuer. L’auteur considère son exploration fonctionnelle terminée et ne promet pas de nouvelles fonctions ni de maintenance.
+> Projet personnel, prototype fonctionnel et cahier des charges vivant, réalisé à 100 % par « vibe coding ». Il répondait aux besoins de son auteur; il est partagé pour être lu, repris et amélioré par des personnes qui souhaitent contribuer. Il n’y a pas d’engagement de maintenance ni de feuille de route de nouvelles fonctions. Le code Mon Mur est distribué sous licence GNU GPL v3; les ressources tierces gardent leurs licences et réserves propres, détaillées dans [les avis](THIRD_PARTY_NOTICES.md) et [l’inventaire des ressources](docs/amo/ASSET-LICENSES.fr.md).
 
 Extension Firefox personnelle qui conserve localement des articles de sources choisies par l’utilisateur.
 
@@ -8,7 +8,7 @@ Extension Firefox personnelle qui conserve localement des articles de sources ch
 
 1. Ouvrir `about:debugging#/runtime/this-firefox` dans Firefox.
 2. Choisir **Charger un module complémentaire temporaire…**.
-3. Sélectionner `manifest.json` à la racine de ce dépôt.
+3. Sélectionner `manifest.json`.
 4. Cliquer sur le bouton de l’extension depuis une page de presse, puis **Suivre cette page**. Firefox demande une autorisation par domaine nécessaire, sauf si l’accès global a été activé dans **Préférences → Accès aux sites**. Si plusieurs flux valides sont détectés, choisir celui à suivre.
 
 Le mur s’ouvre depuis le panneau. Pour utiliser cette copie, rechargez l’extension temporaire en sélectionnant `manifest.json` dans `about:debugging`. Firefox conserve normalement le stockage local associé à l’identifiant défini dans le manifeste; les nouvelles structures sont migrées au premier démarrage. Les pages **Sources**, **J’aime** et **Préférences** sont accessibles dans sa barre de navigation. Les Préférences sont réparties entre **Murs**, **Filtres sémantiques**, **Filtres intelligents** et **Données et accès**; ce dernier onglet présente l’état des autorisations, la fraîcheur et le nombre d’URL mémorisées, l’export CSV et les sauvegardes JSON. La page **J’aime** permet de retrouver les contenus recommandés, de filtrer et trier la liste, et de régler le nombre d’entrées par page. Dans **Préférences → Données et accès**, vous pouvez autoriser tous les sites en une seule fois; sinon Firefox demandera un accès par domaine. Une URL de page ou de flux peut aussi être saisie dans Sources.

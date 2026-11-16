@@ -2,11 +2,9 @@
 
 ## Ce que contient ce dépôt
 
-Ce dépôt dédié contient à sa racine le code de l’extension : manifeste, pages et scripts, `css/`, `icons/`, `models/`, `vendor/`, avis des composants tiers, documentation, scripts de préparation et tests. Les bibliothèques et fichiers WASM locaux sont nécessaires au fonctionnement hors ligne; ils ne sont pas des artefacts de build à supprimer.
+Ce dépôt contient Mon Mur à sa racine : manifeste, pages, scripts, `css/`, `icons/`, `models/`, `vendor/`, avis des composants tiers, documentation, outils de préparation et tests. Les bibliothèques et fichiers WASM locaux sont nécessaires au fonctionnement hors ligne.
 
-Ne pas copier les dossiers de versions historiques placés à côté de `current/`, ni les archives générées dans `web-ext-artifacts/`. Ne pas publier de profil Firefox, sauvegarde personnelle, journaux, données de navigation ou secrets. Le `.zip` d’installation est un livrable de version; le `.xpi` local est non signé. Les paquets se régénèrent depuis les sources.
-
-Le dépôt de développement d’origine contient d’autres projets et des instantanés de versions; ils ne sont pas inclus ici. Ce clone indépendant est la racine à utiliser pour contribuer à Mon Mur.
+Les archives générées dans `web-ext-artifacts/` et les fichiers `.xpi` locaux ne font pas partie des sources à commiter. Ne publiez pas de profil Firefox, sauvegarde personnelle, journaux, données de navigation ou secrets. Les paquets se régénèrent depuis les sources.
 
 ## Charger la version de travail dans Firefox
 
@@ -36,8 +34,8 @@ Mon Mur est un projet personnel réalisé à 100 % par « vibe coding ». Il peu
 
 Le partage collectif des J’aime avec un mur automatique commun est une idée éventuelle, pas une fonction disponible ni une promesse de réalisation. Le projet n’introduit aujourd’hui ni compte utilisateur ni serveur Mon Mur; toute proposition de partage à distance devrait préciser comment elle respecte ces contraintes.
 
-Le code de Mon Mur est publié sous **GNU GPL version 3**, selon le fichier [`LICENSE`](../LICENSE) à la racine. Les composants tiers conservent leurs licences propres, listées dans `THIRD_PARTY_NOTICES.md`. La note [ASSET-LICENSES.fr.md](amo/ASSET-LICENSES.fr.md) recense séparément les ressources graphiques dont la provenance ou l’autorisation de redistribution reste à confirmer. Le brouillon `LICENSE-PROPOSAL.fr.md` est historique et ne remplace pas la GPL v3.
+**Licence du projet : GNU GPL v3**, fournie dans `LICENSE`. Les composants tiers et ressources graphiques conservent leurs licences et conditions propres, récapitulées dans `THIRD_PARTY_NOTICES.md` et `amo/ASSET-LICENSES.fr.md`; certaines origines ou permissions d’icônes restent à confirmer.
 
-## État de la version 5.5.0
+## État de la version 5.6.0
 
 La version est préparée localement pour revue. Un paquet construit ne signifie pas qu’il a été testé manuellement dans Firefox, signé, soumis à AMO ou publié sur GitHub. Consulter [BUILD-AND-REVIEW.fr.md](amo/BUILD-AND-REVIEW.fr.md) pour le suivi de publication.

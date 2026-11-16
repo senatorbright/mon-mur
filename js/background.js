@@ -145,7 +145,7 @@ browser.webRequest.onBeforeSendHeaders.addListener(details => {
 }, ["blocking", "requestHeaders"]);
 function wallId(name) { return `wall-${MMP.stableId(name + "-" + Date.now() + "-" + Math.random())}`; }
 const defaultWallSettings = () => ({ excludedKeywords: [], excludedCategories: [], priorities: [], mode: "chronological", type: "auto", retentionDays: 3, faceFilterEnabled: false });
-const GLOBAL_SETTING_KEYS = ["excludedKeywords", "excludedCategories", "priorities", "faceFilterMode", "faceDetectionThreshold", "affiliateModuleEnabled", "affiliateWarningsEnabled", "hideAffiliatedContent", "speechLanguage", "speechVoiceURI", "archiveRetentionDays", "laterRetentionDays", "retentionSplitVersion"];
+const GLOBAL_SETTING_KEYS = ["excludedKeywords", "excludedCategories", "priorities", "faceFilterMode", "faceDetectionThreshold", "affiliateModuleEnabled", "affiliateWarningsEnabled", "hideAffiliatedContent", "speechLanguage", "speechVoiceURI", "languageFilterEnabled", "languageFilterLanguages", "languageFilterKeepUnknown", "archiveRetentionDays", "laterRetentionDays", "retentionSplitVersion"];
 function settingsForWall(settings, wallSettings) { const combined = { ...settings, ...wallSettings }; for (const key of GLOBAL_SETTING_KEYS) combined[key] = settings[key]; return combined; }
 function wallCinemaEnabled(wall, config) { return config?.type === "cinema"; }
 function articleCinemaEnabled(wall, article, config) { return wallCinemaEnabled(wall, config); }

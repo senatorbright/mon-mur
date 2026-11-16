@@ -1,0 +1,499 @@
+# Mon Mur — changelog cumulatif
+Date : 16 novembre 2026
+
+Changelog cumulatif de l’extension Firefox Mon Mur. Ce document rassemble l’historique des versions 1.0.0, 2.0.0, 2.1.0, 2.2.0, 2.3.0, 2.4.0, 2.5.0, 2.6.0, 2.7.0, 2.8.0, 2.9.0, 2.10.0, 2.11.0, 2.12.0, 3.0.0, 3.1.0, 3.2.0, 3.3.0, 3.4.0, 3.5.0, 3.6.0, 3.7.0, 3.8.0, 3.9.0, 3.10.0, 3.11.0, 3.12.0, 3.13.0, 3.14.0, 3.15.0, 3.16.0, 3.17.0, 3.18.0, 4.0.0, 4.1.0, 4.2.0, 4.3.0, 4.4.0, 4.5.0, 4.6.0, 4.7.0, 4.8.0, 4.9.0, 4.10.0, 4.11.0, 4.12.0, 5.0.0, 5.1.0, 5.2.0, 5.3.0, 5.4.0, 5.5.0 et 5.6.0; il remplace les changelogs séparés des versions précédentes.
+
+## Version 5.6.0 — préférences fiabilisées et préparation du partage
+
+- Correction de l’état du filtre « Langues des contenus » : ses réglages sont désormais traités comme des préférences globales et ne sont plus masqués par d’anciennes valeurs propres à un mur.
+- Fiabilisation de l’activation des techniques de persuasion : l’interface confirme le réglage lorsque l’écriture dans le stockage Firefox est terminée.
+- Mise à jour des références de version, du changelog affiché dans l’extension et des instructions de test et de construction pour le dépôt GitHub autonome.
+- Le projet reste un prototype personnel issu à 100 % du « vibe coding », partagé comme cahier des charges fonctionnel. Les contributions communautaires sont possibles; le partage des J’aime demeure une piste sans compte ni serveur, hors de cette version.
+- Les icônes de certaines plateformes restent soumises aux réserves de droits consignées dans l’inventaire des ressources; elles n’ont pas été remplacées dans cette version.
+- La suite automatisée passe avec 284 tests réussis. Les archives ZIP/XPI 5.6.0 sont construites et contrôlées; le XPI est non signé. Les essais manuels dans Firefox et la revue des droits des icônes restent à effectuer avant diffusion.
+
+## Version 5.5.0 — préparation au partage et préférences plus lisibles
+
+- Réorganisation de l’explication « Recherches et enrichissements » dans Préférences → Données et accès : un résumé concis reste visible et le détail se déplie par thèmes, avec un contrôle clavier accessible.
+- Amélioration de la réactivité lors du changement de mur : le nouveau mur et son état s’affichent immédiatement, les réponses asynchrones obsolètes ne remplacent plus la sélection récente.
+- Activation du filtre de langue avec ses langues par défaut si aucune langue n’avait encore été choisie.
+- Préparation des fichiers de version et des instructions de partage et de débogage Firefox.
+- Les données restent dans le profil Firefox; aucune synchronisation collective des J’aime n’est incluse. Un éventuel mur collectif est une piste future, hors de cette version.
+- Cette version est préparée pour revue; les vérifications manuelles dans Firefox et la revue de publication restent à effectuer.
+
+## Version 5.4.0 — lecture confortable et collecte fiabilisée
+
+- Amélioration de la lecture des articles : police système cohérente dans le texte et les titres, colonne centrée limitée à 70 caractères environ, texte et titres moins blancs, liens bleu clair. Les blocs de code, images et tableaux gardent leur présentation adaptée; la taille du texte et l’interligne restent stables.
+- Sélection plus fiable des images d’articles : prise en compte des variantes haute résolution, des images responsives (`srcset`, `<picture>`) et du chargement différé; exclusion des logos, avatars, pixels de suivi et images de remplacement. La même sélection sert à l’extraction et à l’affichage du contenu.
+- Normalisation des URL étendue à tous les paramètres `utm_*` sans supprimer les paramètres utiles à l’article. La mémoire de déduplication conserve désormais une URL pendant sept jours après sa dernière rencontre, même si le flux la représente à nouveau; migration des données existantes incluse.
+- Collectes Bluesky et LinkedIn limitées aux publications plus récentes que la dernière collecte réussie par sujet, avec reprise de l’horodatage historique lorsque disponible. Bluesky repart des pages les plus récentes et borne chaque collecte pour éviter les reprises anciennes non limitées.
+
+## Version 5.3.0 — Découverte compacte et temporaire
+
+- Refonte compacte de Découverte : les sources à examiner et l’historique sont présentés en tableaux filtrables, avec aperçus tronqués, actions alignées et résultats techniques repliés par domaine.
+- Une recherche remplace les résultats de la recherche précédente. « À examiner » reste uniquement en mémoire pendant l’affichage de la page et se vide à l’ouverture, à la navigation et à l’actualisation.
+- Suppression de la persistance et de la restauration des sources en attente; l’ancienne clé locale est nettoyée au démarrage et les sauvegardes n’exportent ni ne restaurent ces résultats temporaires.
+- Conservation de l’historique durable des sources traitées et suivies, utilisé pour exclure les sources déjà connues des recherches suivantes.
+
+## Version 5.2.0 — fiche cinéma et analyses plus lisibles
+
+- Fiches cinéma compactées autour de l’affiche, du titre, du type, de l’année et d’une note spectateurs en métadonnées; les genres tiennent sur une ligne et le synopsis reste disponible au dépliage ou en extrait si l’affiche manque.
+- Dépliage enrichi avec notes spectateurs et presse, synopsis complet, genres, réalisation, distribution et lien AlloCiné. L’affiche s’ouvre dans une visionneuse adaptée à l’écran, avec zoom et fermeture par Échap.
+- Amélioration de l’attribution des liens affiliés avec UTM après redirection, accompagnée des éléments de preuve et d’une distinction claire entre affiliation commerciale et appréciation de sécurité.
+- Les titres de chapitres horodatés dans les vidéos YouTube ne déclenchent plus à tort la détection des arguments numérotés; les arguments numériques restent repérés dans le texte courant.
+- Le panneau d’explication des techniques de persuasion s’ouvre près du passage surligné et suit son déplacement au défilement.
+
+## Version 5.1.0 — découverte et mémoire des sources
+
+- Recherche manuelle de sources par mots-clés dans DuckDuckGo depuis l’espace Découverte; l’onglet temporaire reste inactif et est fermé à la fin, y compris en cas d’erreur.
+- Détection et vérification des flux RSS/Atom sans exiger que leurs dernières publications correspondent au mot-clé. Les résultats de recherche affichent les domaines explorés, les flux détectés et les motifs de leur statut; l’interface indique la progression réelle.
+- Liste persistante « À examiner » avec les actions « Visiter » et « Marquer comme traitée ». Visiter ne change pas l’état; l’ajout d’une source à un mur la marque automatiquement comme traitée.
+- Historique durable des sources traitées, réexaminable depuis Découverte. Les domaines `www.exemple.fr` et `exemple.fr` sont regroupés, tandis que les autres sous-domaines restent distincts.
+- Sauvegardes JSON v9 incluant les découvertes en attente et les sources traitées. Les refus des anciennes sauvegardes sont importés comme sources traitées.
+- Permission DuckDuckGo facultative; l’accès aux domaines sources est demandé au besoin. Les recherches sont manuelles et ne sont pas envoyées à Mon Mur.
+
+## Version 5.0.0 — fiabilisation Android et ergonomie mobile
+
+- Adaptation responsive du mur principal pour les écrans tactiles : les murs se parcourent horizontalement, les noms et compteurs restent visibles, et le bandeau mobile est plus compact.
+- Réduction de la hauteur du résumé du mur et des commandes de tri et d’actualisation sur smartphone; le bureau conserve sa présentation existante.
+- Ajout d’indications de défilement horizontal dans l’historique des URL et les catalogues de techniques sur les petits écrans; réduction des en-têtes de gestion des sources lorsque la fenêtre est basse.
+- Restauration robuste des filtres sémantiques : les anciennes règles attachées aux murs sont fusionnées lors de la migration, les catégories exclues, expressions exclues et priorités sont sauvegardées/restaurées, et l’import signale les champs absents sans inventer de réglages. Le format de sauvegarde reste en version 6.
+- Fiabilisation du démarrage des actualisations périodiques : l’alarme existante est conservée si sa fréquence est correcte et réparée si elle est absente ou périmée.
+- Vérification Firefox Nightly sous Waydroid en portrait et paysage, avec restauration des murs, sources et préférences. La lecture vidéo réelle et la veille sur un téléphone physique restent à valider sur un appareil Android.
+- Validation automatisée : 238 tests réussis; lint de paquet et installation signée AMO ne sont pas inclus dans cette préparation locale.
+
+## Version 4.12.0 — harmonisation des filtres intelligents
+
+- Harmonisation des quatre filtres intelligents : sélecteurs Actif / Inactif cohérents et badges « Analyse locale » pour les filtres Visages et Affiliation.
+- Réorganisation des modules Techniques de persuasion et Langues des contenus en deux colonnes adaptatives dans les préférences.
+- Inclusion dans les sauvegardes et restaurations de l’activation du filtre linguistique, des langues sélectionnées et du choix de conserver les contenus de langue indéterminée.
+- Alignement du compteur global « Murs » sur le filtrage linguistique des murs automatiques.
+- Les nouveaux articles captés restent masqués jusqu’au clic sur « afficher »; ils apparaissent alors en tête du mur.
+
+## Version 4.11.0 — détection renforcée des affiliations
+
+- Reconnaissance des signatures d’attribution d’influenceur (`utm_medium=influencer` et source `aff…`) et des campagnes YouTube documentées par `utm_source=youtube`, `utm_medium=videodesc`, `utm_campaign` et `utm_content`.
+- Reconnaissance des boutiques créateur Amazon `/shop/` avec paramètres d’attribution et des liens courts `amzlink.to`.
+- Vérification discrète des liens de redirection de marque dans les descriptions vidéo, y compris les redirections exécutées après le chargement de la page; l’onglet temporaire est masqué avant la navigation.
+- Une ancienne réponse en cache sans redirection ne bloque plus cette vérification lorsqu’un lien suspect nécessite l’observation de sa destination.
+
+## Version 4.10.0 — diagnostic des acquisitions et historique des URL
+
+- Ajout d’un tableau des acquisitions pour suivre les tentatives de collecte, leurs résultats et les raisons pour lesquelles des URL reçues sont écartées ou déjà connues.
+- Les sources suivies affichent le nombre d’articles distincts conservés et non lus qui leur sont associés, ainsi que des explications sur les compteurs et la rétention de l’historique de déduplication.
+- Les URL canoniques acquises sont mémorisées par source pendant la migration des données existantes afin de maintenir la déduplication après expiration ou suppression d’un article.
+- Ajout d’un historique consultable des acquisitions et de repères sur la dernière tentative et la dernière actualisation.
+
+## Version 4.9.0 — collecte sociale, filtres et détection des affiliations
+
+- Bluesky : les sujets prioritaires sont maintenant réunis depuis tous les murs, et non plus seulement depuis le mur actif. Le filtre de langue française est facultatif; les publications sans langue déclarée ne sont pas écartées. Le filtre d’image est désactivé par défaut pour conserver aussi les publications textuelles.
+- Préférences des réseaux sociaux automatiques : regroupement des options par réseau dans une présentation plus compacte, avec indication claire de l’indisponibilité du filtre d’image pour LinkedIn via Google Actualités.
+- Filtres intelligents : regroupement des réglages « Titres accrocheurs » et « Techniques de persuasion » sous une détection unifiée des procédés persuasifs, titres compris.
+- Mots-clés exclus : application étendue à tous les murs, y compris les murs automatiques.
+- LinkedIn via Google Actualités : affichage des métadonnées disponibles et meilleur traitement des résultats; le RSS ne fournit pas toujours l’auteur ni une image exploitable.
+- Affiliations : lorsqu’une redirection manuelle renvoie une réponse opaque ou HTTP 0, une seconde requête suit la destination afin d’y rechercher les signatures d’affiliation connues. Un ancien état « non vérifié » est retiré après une vérification réussie sans signature reconnue.
+- Bluesky : correction de l’affichage du logo et de son contraste sur le fond des cartes.
+
+## Version 4.8.0 — lecture automatique de LinkedIn et filtres sur tous les murs
+
+- Au dépliage d’une carte LinkedIn sans permalien mémorisé, récupération automatique du permalien dans un onglet Firefox inactif et masqué, puis fermeture de cet onglet. La résolution est annulée si la carte est repliée et expire après 90 secondes; les liens de secours restent disponibles en cas d’échec ou de consentement Google.
+- Les filtres intelligents s’appliquent aux cartes de tous les murs, y compris les murs automatiques. Les titres se réanalysent immédiatement lors de l’activation ou de la désactivation du filtre; les textes disponibles des publications Bluesky et les descriptions vidéo chargées après coup sont aussi pris en compte.
+- Les recherches de mots-clés LinkedIn utilisent les correspondances de mots entiers pour éviter les faux positifs comme « IA » dans « Patagonia »; les tags n’affichent plus deux fois le même sujet.
+- Simplification des cartes LinkedIn : retrait du bouton de saisie/modification manuelle du permalien et du statut redondant, puisque l’association est automatique. La hauteur de l’intégration officielle est augmentée pour réduire le défilement imbriqué dans les publications courantes.
+- Limite : l’iframe LinkedIn est de domaine externe; son contenu ne peut pas être mesuré pour ajuster sa hauteur automatiquement ni analysé par les filtres de persuasion. La hauteur de l’embed est fixée à 1 100 px et peut rester insuffisante pour une publication exceptionnellement longue.
+
+## Version 4.7.0 — intégration des résultats LinkedIn
+
+- Ajout de LinkedIn aux réseaux sociaux automatiques, avec recherche des publications correspondant aux mots-clés prioritaires via Google Actualités RSS et affichage des résultats dans Mon Mur.
+- Après l’ouverture normale d’un résultat dans un onglet, détection de son permalien LinkedIn et association persistante à la carte correspondante.
+- Affichage des publications compatibles avec l’intégration officielle LinkedIn, y compris les médias que LinkedIn fournit dans cet embed. Les liens de secours et l’association manuelle restent disponibles.
+- Limites connues : le premier accès nécessite encore l’ouverture d’un onglet; le contenu LinkedIn n’est pas récupéré automatiquement au dépliage; la lecture des vidéos intégrées n’a pas encore été validée.
+
+## Version 4.6.0 — vérification des affiliations et liens vidéo
+
+- Suivi explicite des redirections HTTP, avec contrôle des autorisations de domaine, limites de durée et de redirections, et conservation de la chaîne des destinations observées.
+- Distinction entre affiliations confirmées, indices commerciaux à vérifier et liens dont la destination n’a pas pu être vérifiée; l’interface explique quand une vérification réseau échoue sans présenter cet échec comme une preuve d’affiliation.
+- Extension de l’analyse aux URL présentes dans les descriptions de vidéos, avec signalement dans la description et sur la carte; traitement des lots de liens par groupes limités.
+- Reconnaissance des liens utilisant le paramètre court `r` comme indice à vérifier, sans le considérer seul comme une confirmation d’affiliation.
+- Prise en charge des miniatures des aperçus de liens externes Bluesky lorsqu’elles sont fournies par l’API.
+
+## Version 4.5.0 — titres accrocheurs et lecture intégrée
+
+- Ajout du filtre local « Titres accrocheurs » dans les cartes des murs, avec catalogue pédagogique synchronisé avec les règles effectivement actives.
+- Extension des règles à des formulations de suspense, de différence laissée en suspens, de révélation partielle, d’insinuation sur les motifs et de dramatisation des enjeux personnels.
+- Dans la vignette explicative, priorité à « Lire l’article » pour déplier le lecteur intégré; le lien vers le site d’origine reste disponible comme action secondaire.
+- Les titres non signalés conservent leur navigation habituelle; l’analyse des titres reste locale et n’entraîne aucune récupération réseau supplémentaire.
+
+## Version 4.4.0 — repères rhétoriques et catalogue pédagogique
+
+- Extension des repères locaux aux oppositions correctives reformulées, négations successives, renforcements cumulatifs et prétérition explicite; maintien de la concession et de l’anaphore déjà reconnues.
+- Ajout dans les préférences d’un catalogue pédagogique local décrivant les neuf techniques actuellement présentées, synchronisé avec les métadonnées du moteur.
+- Conservation du filtrage des énumérations banales et des explications qui ne concluent ni à une manipulation ni à une intention.
+- Vérifications automatisées ciblées : 15 tests réussis. Vérification manuelle dans Firefox et validation d’un paquet de distribution à effectuer.
+
+## Version 4.3.0 — détection des affiliations derrière des redirections
+
+- Résolution en arrière-plan des liens HTTP(S) présents dans le contenu d’un article, avec limites de durée, concurrence et cache.
+- Reconnaissance des liens de suivi AliExpress après redirection; une redirection seule ne confirme pas une affiliation.
+- Signalement « à vérifier » des liens commerciaux lorsque leur destination ne peut pas être vérifiée.
+- Conservation des résultats sur l’article pour afficher l’indicateur sur les cartes repliées après rechargement.
+- Aucune nouvelle permission ni dépendance ajoutée.
+
+## Version 4.2.0 — préparation de la distribution privée
+
+- Passage à la version 4.2.0 dans le manifeste; l’écran d’informations et les préférences continuent de lire la version installée depuis le manifeste.
+- Clarification dans l’onboarding et les préférences des recherches transmises aux services tiers, du consentement Firefox `searchTerms` et de l’absence de transmission au développeur ou à un serveur Mon Mur observée dans le code.
+- Mise à jour des documents de validation et de préparation des paquets pour la soumission privée AMO. Aucun changement fonctionnel de collecte n’est établi depuis 4.1.0 par l’historique Git.
+
+## Version 4.1.0 — lecture vocale et filtres d’affiliation
+
+- Ajout de la lecture vocale des articles développés avec les voix de synthèse proposées par Firefox, des commandes de lecture dans l’article et d’un réglage de langue et de voix dans Préférences.
+- Ajout d’un contrôle général du module d’affiliation et d’une option pour masquer les contenus avec une affiliation confirmée. Les cartes peuvent afficher les liens détectés; les liens suspects restent visibles.
+- Inclusion des préférences vocales et d’affiliation dans les sauvegardes de configuration.
+- Amélioration de la gestion des préférences : navigation par onglets, réglages des murs automatiques et commandes de gestion des murs.
+- Correction du chargement des préférences vocales historiques `fr_FR` en les normalisant vers `fr-FR`, avec repli sur une langue disponible. Les identifiants de voix restent inchangés.
+- Suppression de l’appel à `getElementById()` avec un identifiant vide lorsque la page des préférences ne demande pas d’onglet particulier.
+
+## Version 4.0.0 — onboarding et confort d’utilisation
+
+- Ouverture du guide de bienvenue après la première installation, avec un accès permanent depuis **Guide et aide**.
+- Réorganisation de l’onboarding en quatre étapes : présentation, accès et confidentialité, organisation des murs, puis ajout d’une source depuis l’icône Mon Mur dans la barre d’outils Firefox.
+- Clarification des autorisations : l’accès global aux sites reste facultatif, les accès ciblés sont pris en compte et le consentement aux recherches automatiques peut être activé ou retiré sans bloquer la navigation.
+- Présentation plus générale des échanges réseau à l’étape des autorisations, sans citer de service particulier ni d’adresse de site.
+- Amélioration du choix des murs lors de l’ajout d’une source, des filtres cinéma selon le mur actif et de la récupération des sources HTML dont la page ne fournit pas directement de liste actualisable.
+- Vérifications : les 10 tests d’onboarding, la validation JSON du manifeste et `git diff --check` réussis.
+
+## Version 3.18.0 — images haute résolution dans les articles
+
+- Ouverture des images du contenu développé dans une visionneuse sur le même onglet, avec fermeture par croix, clic sur l’image, clic sur le fond ou touche Échap.
+- Sélection des variantes d’image les plus grandes exposées par les attributs d’origine et les `srcset`, et utilisation du lien direct vers le fichier image lorsqu’il est disponible.
+- Amélioration de la résolution de l’image à la une : les miniatures reconnues sont comparées à l’image de la page et, pour WordPress, au média original de l’API. Une meilleure image remplace celle stockée et s’affiche sur la carte.
+- Les articles déjà en cache sont réexaminés avec les nouvelles règles du lecteur. Les URLs de miniatures sans meilleure variante sont retentées après sept jours.
+- Vérifications : syntaxe JavaScript, manifeste JSON valide et `git diff --check`. Aucun paquet de distribution n’est construit dans cette mise à jour.
+
+## Version 3.17.0 — lecture vidéo intégrée dans les articles
+
+- Lecture des vidéos Vimeo directement dans l’article déplié, en conservant le paramètre privé `h` lorsqu’il est présent.
+- Ajout de la lecture des vidéos France Télévisions dans l’article, avec résolution des flux HLS ou DASH au lancement et lecteur intégré.
+- Suppression des faux boutons « Lire la vidéo » lorsque Mon Mur ne dispose pas d’un lecteur fonctionnel pour la vidéo.
+- Conservation des lecteurs et méthodes de lecture déjà disponibles pour les autres sources; ajout de bibliothèques HLS et DASH locales pour les flux compatibles.
+- Amélioration de l’extraction des métadonnées et des vidéos intégrées dans les articles, notamment pour les profils HTML appris.
+
+## Version 3.16.0 — gel des améliorations de collecte et de confidentialité
+
+- Déclaration du consentement optionnel Firefox `searchTerms` et demande native avant les recherches thématiques; le refus et le retrait suspendent ces recherches sans bloquer les flux RSS ni les fonctions locales.
+- Annulation des recherches automatiques en cours lors du retrait du consentement; les téléchargements génériques de pages et de flux n'envoient plus les cookies ni les identifiants de session.
+- Amélioration de l'extraction générique RSS/Atom et HTML, dont la détection de dates de publication présentes dans certaines URL d'articles, sans dépendre d'un domaine particulier.
+- Onboarding utilisable sans accorder l'accès global aux sites; les autorisations demandées pour une source restent limitées à son domaine et conservent le port lorsqu'il est non standard, dans Sources et le panneau de la barre d'outils.
+- Ajout des notes de confidentialité, de classification réseau, de validation Firefox et de préparation AMO. Aucun paquet 3.16.0 n'est construit ni soumis dans ce gel.
+
+## Version 3.15.0 — documentation des fonctionnalités
+
+- Remplacement de la page « Première version diffusable » par une présentation permanente des fonctionnalités, organisée par écran et rubrique.
+- Documentation des murs, des sources, des collectes automatiques, de la gestion des contenus et des préférences à partir des fonctions effectivement disponibles.
+- Affichage de la version installée dans la page à partir des métadonnées de l’extension, sans numéro de version dans son nom de fichier.
+- Ajout d’un accès à « Fonctionnalités de Mon Mur » depuis **Préférences → Données et accès**.
+- Vérifications : syntaxe JavaScript, manifeste JSON valide, `git diff --check` et 29 tests automatisés existants.
+
+## Version 3.14.0 — confort de lecture et médias sociaux intégrés
+
+- Amélioration de la visibilité de la barre de défilement des murs, avec un curseur contrasté et une largeur renforcée dans les navigateurs compatibles.
+- Remplacement des commandes de repli dispersées par un bouton compact « ↑ Replier », sticky dans l’article ouvert. Le repli ramène au début de la carte concernée.
+- Déplacement du bouton « Retour en haut » en bas à droite de l’écran, avec des marges adaptées aux petites fenêtres.
+- Refonte des cartes Bluesky : auteur, identifiant et date en en-tête, texte du post affiché une seule fois, médias intégrés sous le texte et liens présentés dans une carte d’aperçu distincte. L’avatar et le nom du compte ouvrent la publication d’origine.
+- Images des posts Bluesky limitées en hauteur, avec ouverture en grand dans une visionneuse; les proportions de l’image sont conservées.
+- CrowdBunker utilise maintenant son lecteur intégré dans la carte développée, avec un lien de secours vers la page d’origine.
+- Vérifications : syntaxe JavaScript, 29 tests automatisés existants et `git diff --check`.
+
+## Version 3.13.0 — accès, données et première utilisation
+
+- Au démarrage, ouverture du premier mur contenant des articles non lus, tout en respectant le mur explicitement demandé dans l’URL.
+- Extension de 48 heures à 7 jours de la période de mémorisation des URL déjà rencontrées; les préférences affichent le volume mémorisé et permettent son export CSV.
+- Amélioration de **Données et accès** : état des autorisations, détection des accès manquants pour CrowdBunker et Rumble, et possibilité de les accorder depuis les préférences.
+- Ajout d’un parcours de bienvenue avec import de sauvegarde et d’une commande de réinitialisation des données locales et des autorisations de sites optionnelles.
+- Réorganisation de **Données et accès** pour réunir les autorisations, la sauvegarde, l’historique des URL, les informations de version et la réinitialisation.
+
+## Version 3.12.0 — Internet Archive, documents PDF et compteurs des murs
+
+- Collecte optionnelle des documents PDF récents d’Internet Archive à partir des mots-clés prioritaires de chaque mur.
+- Ajout d’un mur automatique « PDF auto » dédié aux documents d’Internet Archive. Seuls les PDF explicitement identifiés comme étant en français sont conservés.
+- Affichage séparé de la date du document et de sa date d’archivage, avec liens vers la fiche Internet Archive et le PDF.
+- Déduplication persistante par identifiant Internet Archive et limitation des requêtes.
+- Correction des compteurs des onglets de mur : ils restent associés à leur mur lors de la sélection, diminuent à mesure que les articles sont archivés et ne sont pas réactivés par des notifications de navigation retardées.
+
+## Version 3.11.0 — sources vidéo et lecteur Rumble
+
+- Ajout de CrowdBunker et Rumble comme sources activables séparément dans **Vidéos auto**, avec demande des autorisations de domaine nécessaires.
+- Recherche CrowdBunker dans son index public; recherche Rumble par mots-clés, triée par date et parcourant plusieurs pages. Les onglets temporaires de recherche Rumble sont masqués pendant la collecte.
+- La recherche Rumble demande l’interface française et la région France (`hl=fr`, `gl=FR`); Rumble peut néanmoins renvoyer des vidéos dans d’autres langues.
+- Correction de l’extraction des résultats Rumble et de son diagnostic d’actualisation, avec compteurs des fiches parcourues, résultats rejetés, doublons et erreurs.
+- Le lecteur Rumble récupère l’adresse d’intégration officielle via oEmbed au démarrage de la vidéo. En cas d’échec, la carte indique l’erreur et permet de réessayer; le lien Rumble d’origine reste disponible.
+- Ajout des logos CrowdBunker, Rumble et Bluesky dans les cartes et les préférences; affichage des icônes de plateforme pour les vidéos.
+- Retrait de l’entrée latérale **Réseaux sociaux**, les publications sociales restant accessibles depuis les onglets du mur.
+
+## Version 3.10.0 — mur Bluesky et activation des murs automatiques
+
+- Ajout du mur Bluesky : recherche publique sans compte par sujet prioritaire, fil unique dédupliqué par AT URI et tri par niveau de priorité puis date. L’onglet est présenté sous le nom **RS Auto** et le mur **Réseaux Sociaux Auto**.
+- Les réponses de recherche sont paginées avec un chevauchement temporel; la dernière collecte réussie est conservée par sujet. Les erreurs réseau gardent les publications déjà stockées.
+- Préférences → Murs propose l’activation indépendante de « Vidéos auto » et « Réseaux Sociaux Auto ». Vidéos auto reste activé par défaut pour les profils existants; le mur social démarre désactivé. La désactivation masque le mur et suspend sa collecte sans effacer les données.
+- Les flux YouTube et PeerTube de Vidéos auto sont activables séparément. CrowdBunker et Rumble sont présentés comme options à venir. Les cartes des flux désactivés sont masquées sans être supprimées.
+- Le mur social conserve uniquement les publications qui déclarent le français et comportent une image. Ce filtre s’applique aussi aux cartes déjà présentes en stockage; les données de langue sont conservées pour les affichages suivants. Le filtre des visages s’applique lorsque le filtre global est actif.
+- Le critère d’image Bluesky est configurable. Il est activé par défaut; lorsqu’il est désactivé, les publications sans image peuvent être collectées et affichées.
+- À l’ouverture d’une publication Bluesky déjà stockée, Mon Mur récupère ses métadonnées publiques si le lien externe n’avait pas été enregistré, puis charge et met en cache le contenu éditorial lié.
+- Les états des murs automatiques sont inclus dans l’export et l’import des préférences.
+- Refonte compacte de **Préférences → Murs → Murs automatiques** en deux cartes : interrupteur par mur, sources choisissables dans des boutons accessibles, focus clavier visible, sources grisées mais mémorisées quand le mur est désactivé, et message lorsqu’un mur actif n’a aucune source sélectionnée.
+- Ajout de Bluesky comme source sélectionnable du mur Réseaux sociaux auto.
+- Lorsqu’une publication Bluesky contient un lien, le développement de sa carte récupère et affiche le contenu éditorial de la page liée. Firefox demande l’autorisation du domaine si nécessaire; l’article récupéré est mis en cache localement.
+
+## Version 3.9.0 — murs simplifiés et actions corrigées
+
+- Le premier mur de la liste est désormais celui qui s’ouvre lors de l’ouverture initiale de l’interface. Le réordonnancement persistant détermine ce choix après rechargement; déplacer les murs pendant la consultation ne change pas le mur actuellement affiché. Le champ historique de mur par défaut reste compatible avec les données existantes.
+- Suppression de la colonne et du choix manuel « Par défaut » dans Préférences → Murs. Le tableau conserve la poignée de déplacement et utilise l’espace libéré pour mieux aligner les colonnes.
+- Les actions de chaque ligne sont deux boutons icônes compacts et alignés : ouverture du mur et suppression avec confirmation. Les infobulles et libellés accessibles sont conservés.
+- Clarification de l’aide sur le glisser-déposer et sur l’ouverture automatique du premier mur; les informations de conservation partagée et de filtre Visages sont maintenues.
+- Vérifications : manifeste JSON valide, syntaxe JavaScript, tests automatisés existants et `git diff --check`. Le journal précédent `v3.8.0.txt` est conservé comme historique.
+
+## Version 3.8.0 — gel cumulatif
+
+- Gel cumulatif de Mon Mur en version 3.8.0, avec conservation des fonctions et de l’historique des versions précédentes.
+
+## Version 3.7.0
+
+- Version de l’extension portée à 3.7.0.
+
+## Version 3.6.0 — présentation et contrôle des filtres intelligents
+
+- Réorganisation de **Préférences → Filtres intelligents** en carte compacte à deux colonnes, avec explications distinctes des réglages et adaptation aux fenêtres étroites.
+- Remplacement du statut séparé par un sélecteur accessible **Actif / Inactif** à deux segments, utilisable au clavier et relié aux préférences persistantes.
+- En état inactif, la carte passe en ardoise, l’icône est désaturée et un message indique comment réactiver le filtre. Les réglages sont désactivés visuellement, tandis que les explications et le détail technique restent lisibles et accessibles.
+- Amélioration de la lisibilité des textes secondaires et regroupement des explications sur l’analyse locale dans Firefox et les autorisations d’accès aux images.
+- Ajout de la révélation temporaire d’un visage flouté par double-clic ou au clavier, avec libellés accessibles; les autres vignettes restent filtrées.
+- Conservation du floutage, du masquage, du seuil recommandé de 75 % et de la sauvegarde automatique des préférences.
+- Version de l’extension portée à 3.6.0.
+
+## Version 3.5.0 — filtres intelligents
+
+- Les résumés des cartes sont limités à 300 caractères avant l’ouverture de l’article, avec une coupure au mot le plus proche.
+
+- Ajout d’un onglet **Filtres intelligents** aux Préférences, séparé des filtres sémantiques.
+- Détection locale des visages en gros plan dans les images d’articles avec BlazeFace : désactivée, floutage des visages ou masquage de l’article lorsqu’un visage est détecté.
+- Ajout d’un seuil de confiance réglable pour ajuster la détection : un seuil bas repère plus de visages, mais augmente les faux positifs.
+- Les images sont analysées dans Firefox avec le modèle MediaPipe embarqué. L’activation demande l’autorisation Firefox de lire les images sur les sites.
+
+## Version 3.4.0 — réglages des murs, filtres et accès aux données
+
+- Réorganisation des Préférences en trois onglets : **Murs**, **Filtres** et **Données et accès**. Le tableau des murs présente leurs sources, leur type, leur durée de conservation, leur ordre et leur statut par défaut.
+- Durée de conservation réglable par mur, avec une valeur initiale de 3 jours pour les nouveaux murs. Les murs existants reprennent leur durée historique lors de la migration. L’affichage applique le délai propre à chaque mur; les articles partagés sont physiquement conservés selon la durée maximale des murs associés.
+- Mémorisation des URL arrivées à expiration pour éviter leur réimportation depuis les flux; le schéma IndexedDB est mis à niveau sans effacer les articles encore conservés.
+- Enregistrement des réglages de murs sérialisé afin d’éviter que deux sauvegardes concurrentes ne se remplacent. Les sauvegardes JSON existantes continuent de transporter les réglages des murs.
+- Filtres enrichis : compteurs de fréquence par catégorie, tri par fréquence ou ordre alphabétique, recherche, gestion complète des catégories exclues, et vues détaillées pour rechercher, trier et modifier les mots exclus et les priorités.
+- Les exclusions restent propres au mur sélectionné; les comparaisons ignorent la casse et les accents, et une exclusion continue de primer sur une priorité.
+- Le tableau **Sources** peut être limité aux sources associées au mur demandé depuis la fiche du mur.
+- Compaction de **Données et accès** : état des permissions Firefox, dernières tentatives et réussites d’actualisation, métriques d’URL sur 48 heures, export CSV, sauvegarde et restauration JSON côte à côte, métadonnées de sauvegarde et informations d’extension. La disposition s’adapte aux fenêtres étroites.
+- Icônes thématiques colorées dans le tableau, la fiche et la navigation des murs; le favicon Firefox et le titre du mur suivent la sélection active. Le choix par mur est réutilisé, y compris dans les onglets épinglés. Le choix automatique par nom reste disponible; chaque mur peut aussi choisir parmi 23 thèmes, dont technologie, vidéo, actualités, sport, science, santé, éducation, voyage et environnement. Les noms non reconnus reçoivent une icône générique.
+- Badges **Standard** et **Cinéma** compacts, sans pastille, avec libellé textuel, couleurs contrastées et centrage vertical. Les icônes décoratives sont masquées aux lecteurs d’écran; les contrôles disposent de libellés et d’un focus clavier visible.
+- Vérifications : syntaxe JavaScript, test automatisé existant (1/1), `git diff --check` et aperçu Chrome simulant les sept murs, un nom inconnu, le choix d’icône, la sélection clavier, le réordonnancement et le centrage des badges. Un essai dans le profil Firefox réel reste à effectuer.
+- Version de l’extension portée à 3.4.0.
+
+## Version 3.3.0 — récupération, fiabilité et navigation
+
+- Récupération des catalogues French-Stream `/films/` et `/series/` par leur flux RSS dédié après un échec d’une source HTML, notamment quand le serveur ne renvoie qu’une courte page sans fiches.
+- La recherche de ce flux est tentée dès le premier échec d’extraction HTML et une seule fois par source.
+- Actualisation immédiate au démarrage du navigateur et à l’ouverture du mur lorsque la dernière tentative remonte à plus de cinq minutes; l’alarme périodique de cinq minutes est conservée.
+- Affichage dans Préférences de l’heure de la dernière tentative d’actualisation, de sa fin et du nombre de sources en erreur.
+- Export CSV de l’historique de déduplication des URL, avec l’adresse de l’article, la source et la date de première rencontre; le fichier est compatible avec les tableurs et l’historique couvre 48 heures.
+- Ajout de compteurs dans la barre latérale pour les sources en erreur, les J’aime, les contenus « À plus tard », les articles archivés et le cumul des contenus à lire sur les murs. Le compteur des murs additionne les articles mur par mur.
+- Ouverture d’un mur dans un nouvel onglet par clic molette sur son nom, avec sélection indépendante du mur dans chaque onglet.
+- Arrêt d’une vidéo lorsqu’une autre vidéo démarre sur le même mur, y compris entre onglets; les lecteurs intégrés sont arrêtés à la première interaction avec le lecteur.
+- Titres d’onglets explicites, par exemple « Mon Mur · Sources » ou « Mon Mur · Streaming », mis à jour avec le mur actif.
+- Centrage de la navigation des murs sur la colonne de lecture et utilisation de la largeur disponible; les menus passent sur plusieurs lignes si nécessaire.
+- Version de l’extension portée à 3.3.0.
+
+## Version 3.2.0 — récupération du flux French-Stream
+
+- Récupération des catalogues French-Stream `/films/` et `/series/` par leur flux RSS dédié après un échec d’une source HTML, notamment quand le serveur ne renvoie qu’une courte page sans fiches.
+- La recherche de ce flux est tentée dès le premier échec d’extraction HTML et une seule fois par source.
+- Version de l’extension portée à 3.2.0.
+
+## Version 3.1.0 — extraction complète des articles de La Dépêche
+
+- Correction de l’extraction des articles de La Dépêche : le bloc éditorial `.article-full__body-content` (également marqué `rel="js-article-content"`) n’est plus supprimé parce que sa classe contient le terme « paywall ».
+- Extraction prioritaire de ce bloc avant Readability, afin de conserver le texte complet exposé dans la page au lieu de ne récupérer que le chapo « l’essentiel ».
+- Invalidation du cache lecteur v4 pour relancer l’extraction des articles déjà ouverts après la mise à jour.
+- Version de l’extension portée à 3.1.0.
+
+## Version 3.0.0 — refonte de l’interface et navigation simplifiée
+
+- Refonte de l’interface autour d’une barre latérale fixe pour accéder aux murs, aux sources, aux J’aime, aux contenus « À plus tard », aux archives et aux préférences.
+- Regroupement des murs personnels et du mur « Vidéos auto » dans la navigation supérieure; suppression du menu déroulant « Auto ».
+- Ajout d’une icône vidéo discrète avant le libellé « Vidéos auto » et réutilisation du compteur existant pour afficher les vidéos non lues.
+- Accès aux vues « À plus tard » et « Archivés » uniquement depuis la barre latérale.
+- Présentation du flux dans une colonne de lecture unique, centrée et limitée à 760 px, avec défilement indépendant et images affichées sans recadrage forcé.
+- Adaptation de la navigation aux fenêtres étroites par défilement horizontal; les pages Sources, J’aime et Préférences partagent la barre latérale.
+- Conservation des mécanismes de collecte, de stockage, de tri, de priorisation, de lecture intégrée et des états de lecture existants.
+- Vérifications : syntaxe JavaScript, test YouTube existant (1/1) et `git diff --check` réussis. La vérification visuelle dans Firefox n’a pas été réalisée pendant cette passe.
+- Version de l’extension portée à 3.0.0.
+
+## Version 2.12.0 — recommandations locales « J’aime »
+
+- Ajout d’un bouton « J’aime » indépendant des états « Lu » et « À consulter plus tard », disponible sur les cartes des murs.
+- Enregistrement local des recommandations dans un magasin IndexedDB dédié, identifié par URL normalisée; les articles existants restent inchangés lors de la migration vers la base v2.
+- Reconnaissance commune des variantes d’URL YouTube et suppression des paramètres de suivi connus pour éviter les recommandations en double.
+- Conservation locale des recommandations pendant 60 jours, calculée à partir de la date du J’aime; les articles originaux ne sont pas supprimés par cette rétention.
+- Ajout de la page **J’aime** avec un tableau compact, titres liés aux contenus d’origine, filtres par colonne, tri et retrait immédiat d’une recommandation.
+- Ajout de la pagination avec choix mémorisé localement entre 50 et 1 000 entrées par page.
+- Aucune synchronisation, transmission réseau ou fonctionnalité de recommandation collective n’est ajoutée.
+- Vérification syntaxique JavaScript, tests YouTube existants, validation JSON du manifeste et `git diff --check` exécutés pendant l’implémentation.
+- Version de l’extension portée à 2.12.0.
+
+## Version 2.11.0 — mur automatique de vidéos
+
+- Ajout du mur « Vidéos auto », alimenté par les mots-clés de priorisation existants et actualisé avec la collecte automatique toutes les cinq minutes.
+- Recherche de vidéos YouTube sans clé API obligatoire, avec filtrage des titres, date de référence interne, déduplication et diagnostics des requêtes et résultats.
+- Recherche dans l’index public PeerTube avec filtre de langue française (`languageOneOf=fr`); les résultats sans langue française déclarée sont écartés.
+- Intégration PeerTube avec l’URL officielle `/videos/embed/`; la carte conserve un lien vers l’instance si celle-ci interdit l’intégration.
+- Récupération des extraits de description YouTube et des descriptions PeerTube, conservation des retours à la ligne et affichage des informations de plateforme, chaîne, date et mot-clé.
+- Complément des descriptions manquantes sur les vidéos déjà enregistrées lors des collectes suivantes.
+- Affichage d’icônes distinctes pour YouTube et PeerTube.
+- Vérification réseau sur le mot-clé `nixos` : descriptions présentes pour 16 résultats YouTube sur 16 et 5 résultats PeerTube sur 5. Les extraits YouTube peuvent être tronqués.
+- Tests du parseur et vérifications syntaxiques JavaScript réussis.
+- Version de l’extension portée à 2.11.0.
+
+## Version 2.10.0 — actualisation ciblée et catalogues HTML
+
+- L’actualisation manuelle depuis un mur ne relit que les sources associées à ce mur; depuis les murs automatiques, elle relit toutes les sources.
+- L’actualisation automatique périodique continue de traiter toutes les sources actives.
+- Pour les catalogues cinéma HTML sans lien fiable dans la réponse réseau, tentative de lecture du DOM d’un onglet déjà ouvert sur la page du catalogue.
+- Diagnostic enrichi en cas d’échec HTML, avec longueur, type et URL de la réponse reçue.
+- Vérification qu’un nouveau film présent entre deux lectures HTML chevauchantes est détecté même lorsque sa date de publication est absente.
+- Vérification syntaxique des fichiers JavaScript et validation du manifeste JSON.
+- Version de l’extension portée à 2.10.0.
+
+## Version 2.9.0 — gestion des sources en tableau
+
+- Remplacement des vignettes de sources par un tableau avec filtres par colonne, tri et compteur des résultats.
+- Affichage de toutes les sources par défaut; correction du filtre vide qui masquait toutes les lignes.
+- Tri initial des sources par date d’ajout, de la plus récente à la plus ancienne; la date d’ajout est affichée sans l’heure.
+- Ajout d’une colonne par mur avec cases d’association et filtre associé/non associé; le tri place les sources associées en premier au premier clic.
+- Ouverture du flux ou de la page en cliquant sur le nom de la source, accompagné de son favicon lorsqu’il est disponible.
+- Réduction de l’espace utilisé par les colonnes Type et État; l’état est signalé par une icône dont l’infobulle décrit le problème éventuel.
+- Ajout d’un menu de visibilité des colonnes, avec préférences conservées localement.
+- Adaptation du tableau aux petits écrans avec défilement horizontal, et regroupement du formulaire d’ajout dans un panneau repliable.
+- Remplacement des libellés d’action par des icônes accessibles avec infobulles.
+- Version de l’extension portée à 2.9.0.
+
+## Version 2.8.0 — durées de conservation séparées
+
+- Ajout de durées de conservation distinctes pour les articles archivés et ceux « À consulter plus tard ».
+- Conservation séparée des articles des murs personnalisés, qui reste réglable indépendamment.
+- Migration des préférences existantes : les durées séparées déjà définies sont conservées; les nouvelles valeurs par défaut sont appliquées lorsqu’elles manquent. Les anciennes sauvegardes gardent leur durée unique à l’import.
+- Durées initiales réglées à 2 jours pour les articles archivés et à 90 jours pour ceux « À consulter plus tard ».
+- Récupération des filtres et priorités historiques depuis les préférences globales lorsqu’une configuration de mur manque.
+- Inclusion des sources suivies et de leurs associations aux murs dans les nouvelles sauvegardes; les articles restent stockés séparément et ne sont pas exportés.
+- Affichage, sur chaque mur automatique, de la durée de conservation qui lui correspond.
+- Version de l’extension portée à 2.8.0.
+
+## Version 2.7.0 — murs personnalisés et archivage
+
+- Augmentation de six à dix du nombre maximal de murs personnalisés, dans les préférences, le panneau et les sauvegardes importées.
+- Renommage du mur automatique « Terminés » en « Archivés ».
+- Séparation visuelle des murs automatiques et personnalisés, avec le marqueur « AUTO ».
+- Affichage de la date d’archivage ou d’enregistrement ainsi que de la durée de conservation configurée sur les cartes automatiques.
+- Affichage du nombre d’éléments dans les deux murs automatiques.
+- Version de l’extension portée à 2.7.0.
+
+## Version 2.6.0 — préférences sauvegardables et vidéos YouTube
+
+- Ajout de l’export et de l’import des préférences du mur, notamment les mots et catégories masqués, les sujets prioritaires, la durée de conservation et la configuration des murs.
+- Détection des chaînes YouTube depuis leur page, récupération du nom de la chaîne et ajout du flux Atom associé.
+- Affichage du nom de la chaîne YouTube dans la liste des sources et contrôle de l’identité de la chaîne associée au flux.
+- Ajout du lecteur YouTube intégré dans les articles développés, avec la description et les informations disponibles sur la vidéo.
+- Correction de l’intégration du lecteur YouTube dans Firefox pour éviter l’erreur 153.
+- Désactivation explicite de la lecture en boucle des vidéos intégrées (`loop=0`).
+- Version de l’extension portée à 2.6.0.
+
+## Version 2.5.0 — découverte générique des flux et accès aux sites
+
+- Recherche de flux RSS/Atom dans les chemins usuels à la racine et sous les rubriques internes des sites.
+- Exploration de pages internes repérées par leurs liens RSS, Atom, flux ou syndication pour découvrir les adresses de flux qu’elles proposent.
+- Conservation de la barre oblique finale des URL de flux et de découverte, nécessaire pour les sites qui la distinguent dans leurs routes.
+- Prise en compte de l’autorisation globale `<all_urls>` par le panneau, la page Sources et la vérification réseau en arrière-plan.
+- Affichage de diagnostics de découverte plus précis : chemins candidats, autorisations détectées et erreurs de lecture du flux.
+- Validation manuelle dans Firefox sur le CERT-FR : ajout depuis la page d’accueil et récupération des alertes via le flux RSS de la rubrique.
+
+## Version 2.4.0 — fiches cinéma plus complètes et recherche plus souple
+
+- À l’ouverture d’une fiche cinéma, affichage d’une fiche structurée avec les métadonnées disponibles plutôt que du texte de la page de streaming; le titre de la carte conserve son lien vers la page d’origine.
+- Recherche d’une fiche AlloCiné même lorsque la page d’origine fournit déjà un titre, un résumé et une image; les images reconnues comme génériques ne sont pas retenues comme affiches.
+- Comparaison des titres insensible à la ponctuation et amélioration du choix entre homonymes à partir de l’année disponible dans l’annonce et des années des résultats.
+- Ajout de Wikipédia en français puis en anglais comme seconde source lorsque la recherche AlloCiné ne donne pas de correspondance fiable.
+- En l’absence de résultat fiable dans les bases cinéma, affichage des informations disponibles sur la page d’origine au lieu d’une fiche vide.
+- Les métadonnées cinéma conservent leur provenance pour présenter le lien correspondant (AlloCiné, Wikipédia ou page d’origine).
+- La validation de cette version dans Firefox reste à effectuer après rechargement de l’extension, notamment sur des titres homonymes et des films absents d’AlloCiné.
+
+## Version 2.3.0 — catalogues HTML et actualisation des fiches
+
+- Amélioration de la détection des catalogues de films et séries dans les pages HTML, y compris lorsque le flux RSS du site est invalide ou ne contient qu’une partie du catalogue.
+- Analyse du HTML réellement affiché dans l’onglet Firefox pour détecter les fiches du catalogue.
+- Conservation de l’ordre des cartes du site pour les fiches sans date de publication.
+- Exclusion des faux résultats provenant des compteurs et pixels de suivi, notamment « php hit counter ».
+- Suppression des fiches devenues obsolètes lors d’une actualisation HTML réussie, sans supprimer celles partagées avec une autre source.
+- Nettoyage des états de lecture orphelins à la suppression d’une source; une nouvelle souscription réinitialise l’état de lecture des fiches qu’elle apporte.
+- Ajout de diagnostics détaillés lorsqu’un flux RSS renvoie un document HTML ou XML invalide.
+- Validation dans Firefox du catalogue French-Stream : 18 films détectés dans l’ordre de la page, sans la fiche parasite « php hit counter ».
+
+## Version 2.2.0 — autorisation globale des sites
+
+- Ajout dans **Préférences → Accès aux sites** d’une commande permettant de demander à Firefox l’accès à tous les sites (`<all_urls>`).
+- Affichage de l’état de cette autorisation dans les préférences, mis à jour lorsque l’accès est accordé ou retiré.
+- L’autorisation globale reste facultative. Sans elle, Firefox demande l’accès domaine par domaine.
+- Mise à jour du guide d’installation et d’utilisation pour décrire les deux possibilités.
+- La demande d’autorisation globale dans l’interface Firefox reste à valider après rechargement de l’extension.
+
+## Version 2.1.0 — identité visuelle
+
+- Remplacement de l’ancienne icône générique par `icons/mon-mur.png`, utilisée par le manifeste pour les tailles 32, 48, 96 et 128 pixels.
+- Application de `mon-mur.png` comme icône de l’action Firefox et comme favicon de `wall.html`, `popup.html`, `sources.html` et `settings.html`.
+- Remplacement du pictogramme à côté de « Mon Mur » par l’icône personnalisée dans le mur, les pages de gestion et le popup.
+- Utilisation de l’icône personnalisée comme image de secours dans les cartes sans favicon exploitable.
+- Vérification du PNG : 500 × 500 pixels, avec canal alpha et transparence.
+- Vérification du manifeste JSON après remplacement des références SVG par `icons/mon-mur.png`.
+- Vérification syntaxique de `js/wall.js` après ajout de l’icône de secours, et vérification de la présence de l’icône dans les logos et favicons.
+- Le rendu de cette version dans l’interface Firefox restait à confirmer après rechargement de l’extension.
+
+## Version 2.0.0 — murs cinéma et séries
+
+- Détection automatique des flux cinéma et séries, avec choix manuel du type de mur.
+- Enrichissement des articles cinéma depuis la page liée et, si nécessaire, une fiche AlloCiné publique : affiche portrait, synopsis et métadonnées disponibles.
+- Regroupement à l’affichage des variantes d’un même film provenant de miroirs, sans supprimer les données mises en cache.
+- Vérification des clés de regroupement de trois URL miroir de « Sacrifice » (`newsid=15138419`) et de la priorité aux métadonnées de la page liée.
+- Vérification réseau des métadonnées et affiches de la page liée à l’item RSS « Sacrifice ».
+- Le rendu de cette version dans l’interface Firefox restait à confirmer après rechargement de l’extension.
+
+## Version 1.0.0 — première version stabilisée
+
+- Suivi de sources RSS et Atom, avec extraction HTML de secours lorsqu’aucun flux valide n’est disponible.
+- Organisation des articles dans plusieurs murs, jusqu’à six, avec filtres, priorités et classement propres à chacun.
+- Actualisation périodique et manuelle des sources, détection des nouveaux articles, dédoublonnage et conservation configurable.
+- Cartes d’articles avec titre, extrait et image fournis par la source, et lecture intégrée lorsque l’extraction du contenu complet le permet.
+- Prise en charge des pages d’agenda : titre, date de l’événement, horaires, lieu et description récupérés depuis la fiche événement, puis mis en cache localement.
+- Actions « Lu » et « À lire plus tard », murs automatiques associés et filtres par mots ou catégories.
+- Sauvegarde locale des articles dans IndexedDB et des sources, préférences et murs dans `browser.storage.local`.
+- Filtrage du HTML affiché, lien vers la page d’origine et chargement différé des lecteurs vidéo reconnus.
+- Vérification syntaxique JavaScript et validation dans Firefox d’une carte d’événement réelle (« Puces musicales de Gourdon ») avec date, horaires et lieu, sans doublon ni erreur JavaScript.
+- La fiche vérifiée indiquait le 15 novembre 2026, de 09:00 à 17:00, à la Salle des Pargueminiers, 46300 Gourdon.
+
+## Réglages par défaut et compatibilité
+
+- Conservation des articles : 3 jours pour les nouveaux murs personnalisés; les murs existants conservent leur durée lors de la migration. Archives : 2 jours; « À consulter plus tard » : 90 jours. Chaque durée se règle de 1 à 365 jours.
+- Actualisation automatique : toutes les 5 minutes, selon la planification de Firefox.
+- Affichage progressif : 20 cartes par lot.
+- Firefox 140 ou version ultérieure sur ordinateur; Firefox 142 ou version ultérieure sur Android (selon le manifeste).
+
+## Limites connues
+
+- L’accès global est contrôlé par Firefox et peut être retiré dans ses paramètres. Sans cet accès, Firefox peut demander une autorisation pour chaque domaine.
+- La qualité d’extraction dépend des données publiées par chaque flux ou site. Certains sites imposent une connexion ou une protection anti-robot.
+- Firefox peut retarder les alarmes en arrière-plan.
+- La lecture intégrée peut échouer sur certaines pages; la carte conserve alors un lien vers la page d’origine.
+- Les articles et états de lecture restent locaux au profil Firefox; aucune synchronisation distante n’est fournie.

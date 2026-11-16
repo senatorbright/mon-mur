@@ -87,7 +87,7 @@ test("flagged links require an explicit confirmation and support keyboard and al
   assert.doesNotMatch(guard, /fetch\(|sendMessage\(/u, "displaying the explanation adds no network request");
   assert.match(wall, /Lien d’affiliation détecté/u);
   assert.match(wall, /Lien d’affiliation suspecté/u);
-  assert.match(wall, /Indice observé : \$\{finding\.reason\}/u, "the warning exposes the detector's actual reason");
+  assert.match(wall, /reason\.textContent=affiliateFindingEvidence\(finding\)/u, "the warning exposes the detector's reason and supporting evidence");
   assert.match(wall, /resolved\?\.status==="recognized"\|\|resolved\?\.status==="unverified"\?resolved/u, "confirmed and unverified network findings take precedence over initial suspicion");
   assert.match(css, /\.affiliate-link-check\.suspected/);
   assert.match(css, /@media\(prefers-color-scheme:dark\)\{\.affiliate-link-check\.recognized/);

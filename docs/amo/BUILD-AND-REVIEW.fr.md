@@ -1,12 +1,12 @@
 # Construction et revue AMO
 
-## Préparation 5.5.0 — 16 novembre 2026
+## Préparation 5.6.0 — 16 novembre 2026
 
-Le manifeste cible `5.5.0`. Cette version regroupe l’affichage compact et dépliable des explications de consentement, la sélection plus réactive des murs, ainsi que la préparation d’un dépôt public et des instructions de chargement temporaire dans Firefox. Le changement du filtre de langue dans `js/settings.js` fait aussi partie de l’état de travail transmis pour cette version.
+Le manifeste cible `5.6.0`. La version corrige l’état du filtre linguistique lorsque d’anciennes valeurs étaient conservées au niveau d’un mur, et fiabilise la confirmation visuelle de l’activation des techniques de persuasion. Les références de version, le changelog cumulatif et les instructions de test/construction sont actualisés.
 
-Le dépôt public dédié `senatorbright/mon-mur` possède déjà son fichier GPL v3. La mise à jour locale est préparée dans ce clone indépendant; le push reste en attente de validation. Les archives générées restent ignorées par Git. La proposition de licence personnalisée est un document historique et ne s’applique pas à ce dépôt.
+Le dépôt GitHub public `senatorbright/mon-mur` est déjà créé, sous GPL v3. La préparation locale n’a effectué aucun push. Certaines ressources graphiques de plateformes restent documentées avec des droits de redistribution à confirmer dans `ASSET-LICENSES.fr.md`; elles sont conservées en l’état, sans remplacement.
 
-Construire les paquets locaux avec `./scripts/build-release.sh`. Cela produit `web-ext-artifacts/mon-mur-5.5.0.zip` et `web-ext-artifacts/mon-mur-5.5.0.xpi`. Le XPI est non signé. Les fichiers doivent encore être revus et essayés dans Firefox avant d’être considérés comme une version validée; cette préparation n’est ni une signature Mozilla ni une soumission AMO.
+La suite automatisée passe avec 284 tests réussis et aucun échec. `./scripts/build-release.sh` produit `web-ext-artifacts/mon-mur-5.6.0.zip` et `web-ext-artifacts/mon-mur-5.6.0.xpi`; les deux archives ont été contrôlées comme ZIP valides. Le XPI est non signé; il ne s’agit ni d’une signature Mozilla ni d’une soumission AMO. Les tests manuels Firefox restent nécessaires.
 
 ## Préparation 4.2.0 (2 novembre 2026)
 
@@ -36,9 +36,9 @@ Pour un essai sur téléphone, utiliser `docs/TESTER-ANDROID.fr.md`. Le XPI prod
 
 ## Paquet installable
 
-Le projet ne comporte pas de chaîne de compilation. Les fichiers présents dans `current/` sont directement exécutés par Firefox. Node.js, npm, `web-ext` 10.7.0 et `unzip` sont utilisés pour construire et contrôler l'archive.
+Le projet ne comporte pas de chaîne de compilation. Les fichiers présents à la racine du dépôt sont directement exécutés par Firefox. Node.js, npm, `web-ext` 10.7.0 et `unzip` sont utilisés pour construire et contrôler l'archive.
 
-Depuis le répertoire `Extension Navigateur/mon-mur/current` :
+Depuis la racine du dépôt Mon Mur :
 
 ```sh
 node --test tests/*.test.js
@@ -47,12 +47,12 @@ node --test tests/*.test.js
 
 Le script utilise la version exacte `web-ext@10.7.0` et produit le ZIP de la version inscrite au manifeste. Il exclut le README de développement, les changelogs historiques, les notes AMO, scripts de préparation, tests, journaux et fichiers système. Le changelog cumulatif de la version est conservé dans le paquet, car l’interface installée le télécharge depuis la page de suivi des évolutions. Les avis de licence, le manifeste, le modèle local et les runtimes WASM requis restent inclus.
 
-Pour inspecter et relancer lint sur les fichiers exacts du paquet 5.0.0 :
+Pour inspecter et relancer lint sur les fichiers exacts du paquet généré :
 
 ```sh
-unzip -l web-ext-artifacts/mon-mur-5.0.0.zip
+unzip -l web-ext-artifacts/mon-mur-5.6.0.zip
 tmp_dir="$(mktemp -d)"
-unzip -q web-ext-artifacts/mon-mur-5.0.0.zip -d "$tmp_dir"
+unzip -q web-ext-artifacts/mon-mur-5.6.0.zip -d "$tmp_dir"
 npx --yes web-ext@10.7.0 lint --source-dir "$tmp_dir"
 rm -rf "$tmp_dir"
 ```

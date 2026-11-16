@@ -14,6 +14,7 @@ npx --yes web-ext@10.7.0 build \
     "README.md" \
     "cumulative.txt" \
     "v5.4.0.txt" \
+    "v5.5.0.txt" \
     "docs" \
     "scripts" \
     "tests" \
