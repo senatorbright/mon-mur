@@ -38,6 +38,11 @@ function wallCountHarness() {
     pendingWallSwitch: null,
     wallSwitchRunning: false,
     pendingByWall: new Map([[id, articles.map(article => ({ ...article, readingState: { status: "read" } }))]]),
+    wallSelectionVersion: 0,
+    stateForWall: (current, wallId) => ({ ...current, activeWallId: wallId }),
+    showSelectedWall: wallId => { context.state = context.stateForWall(context.state, wallId); },
+    paintSelectedWall() {},
+    scheduleWallRender() {},
     state: {
       activeWallId: "wall-actus",
       walls: [{ id, name: "Info locale" }],
@@ -110,7 +115,7 @@ test("selecting a wall keeps its badge through the active-wall broadcast", async
     }
     throw new Error(`Unexpected message: ${message.type}`);
   } } };
-  vm.runInContext(section("async function switchWall(", "async function load()"), context);
+  vm.runInContext(section("async function switchWall(", "function startupWallWithContent("), context);
 
   context.updateWallTabCounts();
   assert.equal(badge()?.textContent, "2");

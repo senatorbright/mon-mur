@@ -1,6 +1,6 @@
 # Brouillon historique de licence — remplacé pour ce dépôt
 
-> **Statut :** ce document est conservé comme historique de préparation AMO. Le dépôt GitHub public Mon Mur est désormais publié sous GNU GPL version 3, dont le texte se trouve dans [`../../LICENSE`](../../LICENSE). Les restrictions commerciales décrites ci-dessous ne s'appliquent pas à cette publication GPL.
+> **Statut :** document conservé comme historique de préparation AMO. Le dépôt GitHub public Mon Mur est publié sous GNU GPL version 3, dont le texte se trouve dans [`../../LICENSE`](../../LICENSE). Les restrictions commerciales proposées ci-dessous ne s'appliquent pas à cette publication GPL.
 
 Le contenu ci-dessous était une proposition, pas une licence définitive. Il ne doit pas être utilisé comme licence du dépôt actuel.
 

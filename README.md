@@ -1,69 +1,102 @@
 # Mon Mur
 
-Mon Mur est une extension Firefox qui rassemble des articles et des publications dans des murs thématiques que vous configurez. Elle est conçue pour fonctionner sans compte Mon Mur ni serveur Mon Mur.
+> Projet personnel, prototype fonctionnel et cahier des charges vivant, réalisé à 100 % par « vibe coding ». Il répondait aux besoins de son auteur; il est partagé pour être examiné et amélioré par des personnes qui souhaitent contribuer. L’auteur considère son exploration fonctionnelle terminée et ne promet pas de nouvelles fonctions ni de maintenance.
 
-## Fonctions principales
+Extension Firefox personnelle qui conserve localement des articles de sources choisies par l’utilisateur.
 
-- Suivre des sites et leurs flux RSS/Atom, puis organiser leurs publications par mur.
-- Créer plusieurs murs, régler leur fréquence de collecte, leur ordre et leurs filtres.
-- Découvrir manuellement des sites et des flux à partir de mots-clés.
-- Consulter des murs automatiques pour des vidéos, des publications Bluesky et LinkedIn, ou des documents PDF référencés par Internet Archive.
-- Filtrer les contenus par mots-clés et préférences, lire les articles dans l’extension et retrouver les éléments aimés ou à consulter plus tard.
-- Activer des filtres facultatifs, dont la détection locale de visages dans les vignettes.
-- Exporter les préférences et les sources dans une sauvegarde JSON.
+## Installation temporaire
 
-Les sources et préférences sont enregistrées dans le stockage local de Firefox; les articles sont conservés dans IndexedDB. La détection des visages utilise un modèle et un moteur embarqués, sans service distant d’inférence.
+1. Ouvrir `about:debugging#/runtime/this-firefox` dans Firefox.
+2. Choisir **Charger un module complémentaire temporaire…**.
+3. Sélectionner `manifest.json` à la racine de ce dépôt.
+4. Cliquer sur le bouton de l’extension depuis une page de presse, puis **Suivre cette page**. Firefox demande une autorisation par domaine nécessaire, sauf si l’accès global a été activé dans **Préférences → Accès aux sites**. Si plusieurs flux valides sont détectés, choisir celui à suivre.
 
-## Tester dans Firefox (installation temporaire)
+Le mur s’ouvre depuis le panneau. Pour utiliser cette copie, rechargez l’extension temporaire en sélectionnant `manifest.json` dans `about:debugging`. Firefox conserve normalement le stockage local associé à l’identifiant défini dans le manifeste; les nouvelles structures sont migrées au premier démarrage. Les pages **Sources**, **J’aime** et **Préférences** sont accessibles dans sa barre de navigation. Les Préférences sont réparties entre **Murs**, **Filtres sémantiques**, **Filtres intelligents** et **Données et accès**; ce dernier onglet présente l’état des autorisations, la fraîcheur et le nombre d’URL mémorisées, l’export CSV et les sauvegardes JSON. La page **J’aime** permet de retrouver les contenus recommandés, de filtrer et trier la liste, et de régler le nombre d’entrées par page. Dans **Préférences → Données et accès**, vous pouvez autoriser tous les sites en une seule fois; sinon Firefox demandera un accès par domaine. Une URL de page ou de flux peut aussi être saisie dans Sources.
 
-1. Cloner ce dépôt ou télécharger son contenu, puis décompresser l’archive si nécessaire.
-2. Dans la barre d’adresse de Firefox, ouvrir `about:debugging#/runtime/this-firefox`.
-3. Dans la section **Débogage**, cliquer sur **Charger un module complémentaire temporaire…**.
-4. Dans la fenêtre de sélection de fichiers, ouvrir le dossier du dépôt et choisir **`manifest.json`** (à sa racine), puis valider.
-5. L’extension apparaît dans Firefox. Ouvrir son panneau, suivre une page ou ajouter l’adresse d’un site ou d’un flux, puis accepter les autorisations demandées.
+Dans l’espace **Découverte**, lancez une recherche DuckDuckGo manuelle par mots-clés ou sujet prioritaire. Les nouveaux flux RSS/Atom vérifiés sont gardés dans la liste **À examiner** entre les recherches et les redémarrages. **Visiter** ouvre le site sans modifier son état; **Marquer comme traitée** mémorise durablement la décision. L’ajout d’une source à un mur la marque aussi comme traitée. La section **Sources traitées** conserve l’historique et permet de rendre un site éligible à une recherche ultérieure. Les doublons sont regroupés par domaine éditorial, en assimilant `www.exemple.fr` et `exemple.fr` tout en gardant les sous-domaines distincts. Firefox demande l’accès à DuckDuckGo et aux domaines qui doivent être vérifiés. Les recherches sont manuelles et locales au navigateur. Les sources traitées et découvertes en attente sont incluses dans les sauvegardes JSON v9; les refus des anciennes sauvegardes sont importés comme sources traitées.
 
-Pour recharger une version modifiée, revenir à `about:debugging#/runtime/this-firefox` et recharger l’extension, ou sélectionner à nouveau `manifest.json`. Une extension chargée temporairement doit être rechargée après la fermeture de Firefox.
+## Multi-murs
 
-Firefox peut demander des autorisations d’accès aux sites. Vous pouvez les accorder au cas par cas ou régler l’accès dans les préférences de l’extension. Le manifeste demande Firefox 140 ou une version ultérieure sur ordinateur.
+- Deux murs sont créés lors de la première migration : « Actus » et « Info locale ». Les sources et préférences historiques sont conservées dans « Actus »; les articles IndexedDB ne sont pas déplacés ni retéléchargés.
+- Jusqu’à dix murs personnalisés peuvent être créés, renommés, supprimés et réordonnés depuis Préférences. Le dernier mur sélectionné est mémorisé.
+- Un clic molette sur le nom d’un mur l’ouvre dans un nouvel onglet Firefox, sans changer le mur de l’onglet actuel.
+- Une source peut alimenter plusieurs murs. Son flux n’est collecté qu’une fois par cycle et ses articles restent stockés une seule fois.
+- Les filtres, priorités, le classement et la durée de conservation sont propres à chaque mur. La durée par défaut des nouveaux murs est de 3 jours; la durée globale antérieure est reprise pour les murs déjà présents.
+- Dans le panneau de l’extension, « Suivre cette page » permet de choisir un ou plusieurs murs et d’en créer un sans quitter le panneau. Une source suivie peut voir ses associations modifiées.
+- La sauvegarde des préférences contient les murs créés et leur ordre, leurs filtres et priorités, les durées de conservation et les sources avec leurs associations aux murs. Les articles stockés ne sont pas inclus. Une ancienne sauvegarde sans sources laisse la liste des sources actuelle intacte.
 
-Pour une utilisation durable, installez une version publiée par son canal de distribution habituel.
+## Fonctionnement
 
-### Paquet ZIP de test
+- Les résumés affichés sur les cartes du mur sont limités à 300 caractères avant l’ouverture de l’article; la coupure se fait de préférence à la fin d’un mot.
 
-Pour créer l’archive `web-ext-artifacts/mon-mur-5.4.0.zip`, lancer à la racine du dépôt :
+- **Filtres intelligents → Visages dans les vignettes** active ou désactive globalement le filtre et propose le floutage des visages en gros plan ou le masquage d’une carte lorsqu’un visage est détecté. Dans **Préférences → Murs → Mes murs**, la colonne **Visages** autorise son application sur chaque mur. Le filtre est autorisé par défaut sur **Vidéos auto** et désactivé sur les murs personnalisés jusqu’à activation dans leur ligne. Un seuil de confiance réglable contrôle la sensibilité : le diminuer repère davantage de visages, au prix de plus de faux positifs. La détection BlazeFace tourne localement dans Firefox. À l’activation, Firefox demande l’autorisation de lire les images des sites (y compris les CDN); les images et détections restent locales.
+- **Filtres intelligents → Affiliation** propose un contrôle général Actif/Inactif qui affiche les avertissements, cocardes et détails des affiliations, ainsi qu’une option pour masquer les articles et vidéos avec au moins une affiliation confirmée. Désactiver le module suspend temporairement ses effets sans effacer les préférences internes. Le masquage ne supprime aucune donnée; les liens suspects restent visibles. Les préférences sont conservées dans Firefox et incluses dans les sauvegardes.
 
-```sh
-./scripts/build-amo.sh
-```
+- RSS/Atom est préféré. Un flux est enregistré seulement après validation XML et récupération d’au moins un article.
+- Sans flux valide, l’extraction de secours retient les liens présents dans des éléments `<article>`, les données JSON-LD `Article`/`NewsArticle` et certains liens datés dont la structure URL est explicite. Les pages qui n’exposent pas ces structures ne sont pas enregistrées comme sources opérationnelles.
+- Les pages d’agenda HTML sont également prises en charge : les cartes récupèrent leur titre, leur extrait, leur image et leur date. Les détails d’une fiche événement (date, horaires, lieu et description) sont chargés à l’affichage et conservés localement.
+- Les articles sont stockés dans IndexedDB; sources et préférences utilisent `browser.storage.local`.
+- Un réveil périodique actualise les sources actives selon la fréquence globale choisie dans Préférences (15 minutes par défaut, jusqu’à une fois par jour). Une collecte est aussi lancée au démarrage du navigateur et à l’ouverture du mur si la dernière collecte remonte à plus longtemps que cette fréquence. Firefox peut retarder les alarmes en arrière-plan; elles sont recréées au démarrage du navigateur.
+- Chaque actualisation relit le flux disponible. La date affichée dans Sources correspond à la dernière collecte réussie; une erreur ne l’avance pas. Préférences affiche aussi les dates de la dernière tentative et de sa fin. Pour une URL inconnue, une date de publication fiable doit être postérieure à cette collecte; les URL déjà rencontrées sont mémorisées pendant 7 jours après leur dernière rencontre, y compris après suppression puis réajout de la source. Préférences permet d’exporter cette mémoire en CSV avec l’URL, la source et la date de première rencontre. Sans date fiable, l’URL sert seule à la déduplication pendant ces 7 jours.
+- La barre latérale indique le nombre d’articles à lire dans l’ensemble des murs, les sources en erreur, les J’aime, les articles « À consulter plus tard » et les articles archivés.
+- Les onglets des murs affichent le nombre d’articles encore à consulter, mis à jour à chaque actualisation. Les deux murs automatiques sont séparés visuellement des murs personnalisés et signalés « AUTO ». « À consulter plus tard » regroupe les articles et vidéos enregistrés; « Archivés » contient ceux déjà marqués comme lus.
+- Le mur charge 20 cartes par lot, sans requête réseau au défilement. L’actualisation manuelle collecte de nouveaux articles et propose un bouton pour afficher les nouveaux articles sans interrompre la lecture.
+- Chaque carte peut être dépliée directement dans le mur pour lire l’article complet. Le contenu du flux est utilisé si disponible, sinon la page originale est analysée avec Mozilla Readability. Le HTML est filtré avant affichage et le résultat est mis en cache dans IndexedDB à la première ouverture. Les vidéos HTML5 et lecteurs intégrés reconnus sont proposés dans l’article; le lecteur distant ne se charge qu’après un clic et s’arrête quand la carte est repliée. Une seule vidéo peut jouer à la fois pour un même mur; démarrer une autre arrête le lecteur précédent, y compris entre onglets.
+- Pour le lecteur YouTube, Firefox transmet l’URL réelle `moz-extension://…/wall.html` comme `Referer` au premier chargement de l’iframe. Cette modification est limitée aux iframes `/embed/` de YouTube créées depuis le mur.
+- Les actions « Lu » et « À consulter plus tard » retirent l’article du mur de sources et l’affichent dans les murs automatiques correspondants. La conservation des murs « Archivés » et « À consulter plus tard » se règle séparément dans les préférences; la date d’archivage ou d’enregistrement et la durée correspondante sont affichées sur les cartes. Chaque délai part de la dernière action explicite; consulter l’article ne le renouvelle pas. Un instantané des champs utiles à l’affichage est conservé avec l’état pour que l’article reste visible même s’il disparaît du flux ou de la base d’articles.
+- L’ordre chronologique est strict par date, avec la date de découverte en secours. Le mode priorités regroupe par niveau puis trie chaque groupe par date.
+- Les exclusions par catégorie et mots entiers / expressions sont appliquées à l’affichage, sans effacer les données. Les comparaisons de mots ignorent casse et accents. Les mots-clés exclus configurés dans les murs s’appliquent aussi à tous les murs automatiques.
+- La conservation des articles de chaque mur personnalisé, des articles archivés et des articles « À consulter plus tard » se règle séparément de 1 à 365 jours (3 jours pour un nouveau mur, 2 jours pour les archives et 90 jours pour « À consulter plus tard »). Les murs existants gardent leur ancienne durée. La rétention des murs est appliquée par mur à l’affichage et au stockage partagé pendant les actualisations.
+- À l’expiration de leur durée de conservation, les articles archivés ou enregistrés plus tard sont supprimés; l’historique par source empêche leur réimportation depuis un flux qui les conserve encore.
 
-Cette archive est non signée et préparée pour la soumission à AMO; elle ne remplace pas le chargement temporaire décrit ci-dessus. Pour installer durablement l’extension dans Firefox, il faut une version signée. Firefox Nightly ou Developer Edition peuvent aussi servir aux essais d’un paquet non signé, avec les réglages de développement appropriés. Waterfox documente également l’installation de modules non signés depuis un fichier, mais Mon Mur n’a pas été testé dans Waterfox.
+## Mur « Vidéos auto »
 
-Pour essayer ce paquet comme un module installé dans Firefox Nightly ou Developer Edition :
+Le mur **Vidéos auto** recherche sur YouTube, dans l’index public PeerTube, CrowdBunker et Rumble (activables séparément dans les préférences) les termes déjà présents dans **Préférences → Prioriser** (union des règles de tous les murs). La recherche compare le titre avec les règles de casse, accents et mots entiers de l’application. PeerTube est interrogé avec le filtre `languageOneOf=fr` et les résultats sans langue française déclarée sont écartés. Une vidéo correspondant à plusieurs termes est enregistrée une seule fois; sa carte indique sa plateforme et le mot-clé de découverte.
 
-1. Copier le ZIP sous une extension `.xpi` :
+À l’ouverture d’une vidéo, l’extension affiche l’extrait de description présent dans la recherche YouTube ou la description des API PeerTube et CrowdBunker, avec ses retours à la ligne, puis la plateforme, la chaîne, la date de publication et le mot-clé de découverte. Les nouvelles collectes complètent aussi les résumés des vidéos déjà enregistrées.
 
-   ```sh
-   cp web-ext-artifacts/mon-mur-5.4.0.zip web-ext-artifacts/mon-mur-5.4.0-test-unsigned.xpi
-   ```
+Les vidéos PeerTube sont intégrées via l’URL officielle `/videos/embed/…`; un lien vers l’instance reste disponible si elle refuse l’intégration. Rumble utilise son lecteur intégré officiel. CrowdBunker utilise sa route `/embed/{uid}` avec un lien de secours vers la page d’origine. Les URL de lecture PeerTube `/videos/watch/…` ne sont pas utilisables en iframe sur certaines instances.
 
-2. Dans ce navigateur de test, ouvrir `about:config` et définir `xpinstall.signatures.required` sur `false`.
-3. Ouvrir `about:addons`, choisir **Installer un module depuis un fichier…** dans le menu des outils, puis sélectionner le fichier `.xpi`.
+La collecte automatique conserve l’alarme de cinq minutes. Sa date de référence est persistée séparément de la dernière collecte réussie et des identifiants déjà vus. La migration d’essai positionne une fois la référence au `2026-10-21T00:00:00+02:00`; les rafraîchissements ultérieurs ne la réinitialisent pas. Les échecs n’avancent pas cette référence. YouTube expose une date relative arrondie et un résultat HTML susceptible de changer. L’index PeerTube ne connaît pas nécessairement toutes les vidéos du réseau et peut renvoyer des résultats incomplets. CrowdBunker utilise son endpoint de recherche public; Rumble nécessite une page Firefox normale et peut limiter les résultats à cinq pages par mot-clé.
 
-Ce réglage sert uniquement aux essais avec des extensions non signées. Préférez le chargement temporaire par `about:debugging` pour tester le code au quotidien. Dans Waterfox, l’installation non signée depuis un fichier est documentée, mais la compatibilité fonctionnelle de Mon Mur n’y a pas été vérifiée.
+## Limites connues
 
-## Comptes, réseau et données
+- L’extraction dépend du contenu exposé par le flux ou la page. Les erreurs réseau, les protections anti-robot, les pages nécessitant une connexion ou les domaines dont Firefox refuse l’accès peuvent empêcher la lecture intégrée; un message discret et le lien original restent proposés. Aucun paywall n’est contourné.
 
-Aucun compte n’est nécessaire et Mon Mur ne transmet pas vos murs, préférences ou articles à un serveur Mon Mur. Les données restent dans le profil Firefox utilisé; elles ne sont pas synchronisées automatiquement entre appareils. Utilisez la sauvegarde intégrée pour exporter les préférences et les sources.
+## Murs cinéma et séries (prototype)
 
-L’extension contacte les sites et services nécessaires aux fonctions activées, par exemple pour récupérer des flux ou rechercher des publications publiques. Ces requêtes dépendent des sources choisies et des autorisations accordées. Les services tiers restent soumis à leurs propres règles. La détection de visages fonctionne localement dans Firefox.
+Dans **Préférences → Gérer les murs**, le type est réglé sur **Automatique** par défaut. Le nom du mur est comparé comme une suite de mots, sans tenir compte de la casse ni des accents (film(s), cinéma/ciné, movie(s), série(s), series, TV shows, streaming, VOD/SVOD). **Cinéma / Séries** force l’enrichissement; **Standard** le désactive même si le nom contient un de ces termes. Les mots présents dans les articles ne changent jamais le type du mur.
 
-## Licence
+À la collecte du flux, les mots-clés du titre ou de la description de l’item, des catégories, du contenu, ainsi que du titre et de la description du flux signalent le contenu cinéma. Pour ces items (ou ceux d’un mur forcé en mode Cinéma), l’extension lit la page liée pour obtenir le titre, l’année et les métadonnées initiales. À l’ouverture d’une fiche, elle recherche ensuite le film sur AlloCiné et affiche une fiche structurée (synopsis, affiche, genres, réalisation, acteurs et note) à la place du texte de la page source. Les signes de ponctuation sont ignorés pour comparer les titres; l’année explicitement présente dans l’annonce, puis sa date de publication, servent à départager les homonymes. Si AlloCiné ne trouve pas de correspondance fiable, Wikipédia est consultée en français puis en anglais. Si aucune base ne trouve le titre, les métadonnées disponibles sur la page d’origine sont affichées. Une image reconnue comme générique ne bloque pas la recherche d’une vraie affiche. Le titre de la carte conserve le lien vers la page d’origine. Le réglage Standard désactive l’enrichissement. Les affiches cinéma utilisent `object-fit: contain` pour montrer toute l’image portrait. Firefox demande l’autorisation d’accès aux bases cinéma à la première ouverture d’une fiche.
 
-Le code de Mon Mur est publié sous licence GNU GPL version 3. Consultez [`LICENSE`](LICENSE). Les composants tiers conservent leurs licences propres; leurs avis et références figurent dans [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) et dans les fichiers de licence sous `vendor/`.
+### Vérification du prototype
 
-## Documentation
+- Vérification réseau ponctuelle : `https://www.allocine.fr/rechercher/?q=Dune…` répond HTTP 200 et fournit le résultat « Dune : Deuxième Partie » (2024). Le chemin est présent dans une classe encodée par le site et a été décodé pendant le test.
+- La fiche publique `https://www.allocine.fr/film/fichefilm_gen_cfilm=278742.html` répond HTTP 200 et fournit un JSON-LD `Movie` avec titre original, synopsis, affiche, genres, réalisateur et acteurs. L’ancienne route `/recherche/` répond HTTP 410 et n’est pas utilisée.
+- La détection a été vérifiée sur « Films et Séries », « Streaming VOD », « CINÉ », « Movies » et « Séries TV »; « Actualités », « Mes nouvelles », « Filmmaker » et « Mémoires » sont rejetés. Le forçage manuel vers Cinéma et Standard a aussi été vérifié.
+- Le parseur de flux a été vérifié dans Firefox sur des exemples RSS `enclosure`, Media RSS `content medium="image"` et Atom `link rel="enclosure"`; les trois URL d’affiche sont récupérées.
+- L’item RSS fourni (« Sacrifice ») contient une catégorie `film-streaming`. Vérification HTTP de son URL : le titre « Film Sacrifice (2026) en streaming complet », un synopsis et l’image TMDB `300 × 450` sont présents; l’extraction générique de la page peut donc construire la carte avant affichage.
+- Des données déjà stockées dans Firefox montraient trois URL de miroirs pour ce même film (`fs26.lol`, `french-stream.net`, `fs20.lol`), toutes avec `newsid=15138419`. L’affichage regroupe désormais ces variantes dans les murs cinéma sans supprimer les entrées stockées; il privilégie la fiche issue de la page liée lorsqu’elle contient une image et un synopsis.
+- Sur l’ancienne carte vérifiée, la phrase affichée provenait du synopsis JSON-LD de la fiche AlloCiné; elle n’était pas dans le RSS (description vide) et différait de la meta-description de la page source. Les deux images en cache ont été ouvertes : ce sont des affiches valides (AlloCiné et TMDb), pas des vignettes placeholder. La nouvelle règle de sélection choisit l’affiche de la page source pour les variantes déjà enrichies.
+- Les signaux de catégories ont été vérifiés (« film-streaming » reconnu; Actualités/Filmmaker rejetés). La syntaxe de tous les fichiers JavaScript a été vérifiée avec `node --check`; le manifeste a été validé comme JSON.
+- L’onglet Mon Mur est ouvert dans le profil Firefox actif, mais le contexte d’automatisation ne peut pas lire son DOM ni confirmer le dialogue d’autorisation. Le parcours d’enrichissement complet sur cet item RSS dans l’interface reste à valider après rechargement de l’extension.
 
-- [Fonctionnalités](fonctionnalites.html)
-- [Politique de confidentialité — projet](docs/amo/PRIVACY-POLICY-DRAFT.fr.md)
-- [Portée des autorisations](docs/amo/MOZILLA-DATA-CLASSIFICATION-QUESTION.fr.md)
-- [Avis sur les composants et ressources tiers](THIRD_PARTY_NOTICES.md)
+Le modèle de détection et le runtime MediaPipe sont embarqués localement. Leurs avis de licence figurent dans [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Murs automatiques
+
+Dans **Préférences → Murs → Murs automatiques**, les murs **Vidéos auto** et **Réseaux Sociaux Auto** peuvent être activés indépendamment. Vidéos auto est activé par défaut pour conserver le comportement des installations existantes; Réseaux Sociaux Auto est désactivé par défaut. YouTube, PeerTube, CrowdBunker et Rumble se règlent séparément. CrowdBunker et Rumble ne sont pas activés par défaut et Firefox demande leur autorisation de domaine au premier choix. Un mur désactivé est masqué et sa collecte s’arrête, ses publications déjà stockées restent conservées.
+
+Les réglages sont présentés dans deux cartes compactes. Chaque mur a son propre interrupteur et ses boutons de sources. Les choix restent mémorisés lorsque le mur est désactivé; si le mur est actif sans source cochée, un message l’indique.
+
+Le mur **Réseaux Sociaux Auto** (onglet **RS Auto**) regroupe Bluesky et LinkedIn. Bluesky recherche séparément chaque sujet prioritaire défini dans les filtres sémantiques de vos murs, via son AppView public et sans compte. Le filtre « Français uniquement » est désactivé par défaut et peut être activé dans les préférences Bluesky; lorsqu’il est actif, les publications déclarées dans une autre langue sont écartées, tandis que celles sans langue déclarée restent possibles. Le réglage **Uniquement avec image** s’applique à Bluesky et est désactivé par défaut afin de conserver les publications textuelles. Les publications Bluesky sont dédupliquées par AT URI et triées par priorité puis date. Les requêtes peuvent être limitées ou incomplètes; les erreurs réseau ne suppriment pas les données déjà stockées.
+
+LinkedIn recherche les mots-clés prioritaires via les flux RSS de Google Actualités. Comme Google peut renvoyer des correspondances approximatives, Mon Mur vérifie aussi que le mot-clé apparaît comme un mot entier dans le titre RSS avant de conserver ou d’étiqueter le résultat. Les tags des cartes LinkedIn affichent les mots-clés ainsi reconnus. Le RSS ne fournit ni le corps complet ni d’image exploitable; le filtre « avec image » n’est donc pas proposé pour LinkedIn, car il masquerait tous les nouveaux résultats. Un mot-clé présent uniquement dans le corps peut ne pas être détecté. Au dépliage d’une carte sans permalien mémorisé, Mon Mur ouvre le résultat dans un onglet Firefox inactif, le masque avec `tabs.hide()`, puis ne suit que cet onglet pendant 90 secondes pour récupérer l’URL LinkedIn. L’onglet est fermé après réussite, échec, annulation ou expiration. Firefox peut afficher son avertissement natif lors du premier masquage. Si le masquage n’est pas permis, si Google demande un consentement ou si la navigation échoue, Mon Mur laisse les liens de secours disponibles et propose une nouvelle tentative. Les permaliens sont conservés localement. Les publications compatibles sont affichées par l’intégration officielle LinkedIn, qui peut fournir leur texte et leurs médias selon leur visibilité et les capacités de LinkedIn; la lecture des vidéos intégrées dépend de LinkedIn et n’est pas garantie. Les articles `/pulse/` gardent le lien d’origine et ne sont pas assimilés aux embeds de publications.
+
+Le filtre des visages s’applique au mur social comme à **Vidéos auto** lorsque le filtre global est activé. Les publications déjà stockées mais désormais exclues par un filtre restent dans les données locales.
+
+Si une publication Bluesky inclut un lien externe, développer sa carte récupère le lien depuis les métadonnées publiques du post si nécessaire, charge le contenu éditorial de la page liée et le met en cache localement. Firefox demande l’accès au domaine si celui-ci n’est pas déjà autorisé.
+
+## Documents Internet Archive
+
+Dans **Préférences → Murs → Murs automatiques**, **Documents PDF en français** alimente le mur automatique **PDF auto** avec les mots-clés prioritaires des murs. Seuls les PDF dont les métadonnées Internet Archive déclarent le français (`fr`, `fre`, `fra` ou `French`) sont gardés; les langues absentes ou différentes sont écartées. Les résultats sont triés par date d’ajout à Internet Archive; le collecteur traite jusqu’à huit mots-clés par actualisation, vérifie au plus cinq fiches de métadonnées par mot-clé et conserve jusqu’à trois PDF accessibles par terme. Il espace les recherches manuelles d’au moins une minute. Il exige aussi une correspondance dans le titre pour réduire les résultats hors sujet. Les entrées sont dédupliquées par identifiant Internet Archive et leurs dates de publication et d’archivage restent distinctes sur les cartes. Les PDF ne sont pas téléchargés ni analysés.

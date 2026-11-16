@@ -1,5 +1,13 @@
 # Construction et revue AMO
 
+## Préparation 5.5.0 — 16 novembre 2026
+
+Le manifeste cible `5.5.0`. Cette version regroupe l’affichage compact et dépliable des explications de consentement, la sélection plus réactive des murs, ainsi que la préparation d’un dépôt public et des instructions de chargement temporaire dans Firefox. Le changement du filtre de langue dans `js/settings.js` fait aussi partie de l’état de travail transmis pour cette version.
+
+Le dépôt public dédié `senatorbright/mon-mur` possède déjà son fichier GPL v3. La mise à jour locale est préparée dans ce clone indépendant; le push reste en attente de validation. Les archives générées restent ignorées par Git. La proposition de licence personnalisée est un document historique et ne s’applique pas à ce dépôt.
+
+Construire les paquets locaux avec `./scripts/build-release.sh`. Cela produit `web-ext-artifacts/mon-mur-5.5.0.zip` et `web-ext-artifacts/mon-mur-5.5.0.xpi`. Le XPI est non signé. Les fichiers doivent encore être revus et essayés dans Firefox avant d’être considérés comme une version validée; cette préparation n’est ni une signature Mozilla ni une soumission AMO.
+
 ## Préparation 4.2.0 (2 novembre 2026)
 
 L'ID Gecko `mon-mur-presse-toolbar@local` est inchangé. Garder cet ID et mettre à jour l'extension sans la désinstaller conserve le même espace de stockage Firefox; une désinstallation peut supprimer ces données. Firefox standard exige une extension signée. Pour une diffusion privée, créer une soumission **Unlisted / On your own** dans AMO, téléverser le ZIP 4.2.0, répondre aux demandes de revue et télécharger le XPI signé. Cela ne rend pas l'extension publiquement listée. Ne pas utiliser `web-ext sign` avant obtention des identifiants API et une validation explicite; aucun secret n'est stocké ici.
@@ -37,7 +45,7 @@ node --test tests/*.test.js
 ./scripts/build-amo.sh
 ```
 
-Le script utilise la version exacte `web-ext@10.7.0` et produit `web-ext-artifacts/mon-mur-5.0.0.zip`. Il exclut le README de développement, les notes AMO, scripts de préparation, tests, journaux et fichiers système. Le changelog cumulatif est conservé dans le paquet, car l’interface installée le télécharge depuis la page de suivi des évolutions. Les avis de licence, le manifeste, les scripts, le modèle local et les runtimes WASM requis restent inclus.
+Le script utilise la version exacte `web-ext@10.7.0` et produit le ZIP de la version inscrite au manifeste. Il exclut le README de développement, les changelogs historiques, les notes AMO, scripts de préparation, tests, journaux et fichiers système. Le changelog cumulatif de la version est conservé dans le paquet, car l’interface installée le télécharge depuis la page de suivi des évolutions. Les avis de licence, le manifeste, le modèle local et les runtimes WASM requis restent inclus.
 
 Pour inspecter et relancer lint sur les fichiers exacts du paquet 5.0.0 :
 

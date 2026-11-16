@@ -64,7 +64,7 @@ Mon Mur uses these third-party platforms for source collection, article links, o
 - **CrowdBunker**: optional video source. `icons/crowdbunker.png` is its public site favicon, downloaded from <https://crowdbunker.com/favicon.png>.
 - **Rumble**: optional video source. `icons/rumble.svg` is the Rumble mark from Simple Icons, licensed CC0 1.0: <https://github.com/simple-icons/simple-icons>.
 - **Bluesky**: optional social source. `icons/bluesky.svg` is the standalone butterfly from Bluesky's official brand assets: <https://bsky.social/about/support/icons>. Use remains subject to Bluesky's trademark policy and brand guidelines.
-- **LinkedIn**: optional social source. `icons/linkedin.svg` is used by the interface; its author, source, and redistribution permission are not documented in this repository.
+- **LinkedIn**: optional social source. `icons/linkedin.svg` is used by the interface; its author, source, and redistribution permission are not documented in this repository. See `docs/amo/ASSET-LICENSES.fr.md` before redistribution.
 - **Internet Archive**: public metadata and document listings are used by the optional PDF automatic wall: <https://archive.org/>.
 - **AlloCiné** and **Wikipedia**: optional cinema metadata lookups use article titles to find matching public film or series information when the user has allowed automatic searches. The resulting pages remain under their respective services' terms and attribution requirements.
 - **Dailymotion**: compatible video articles can use Dailymotion's embedded player. Mon Mur does not bundle its player code or visual assets.

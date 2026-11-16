@@ -1,7 +1,16 @@
 # Mon Mur — changelog cumulatif
-Date : 13 novembre 2026
+Date : 16 novembre 2026
 
-Changelog cumulatif de l’extension Firefox Mon Mur. Ce document rassemble l’historique des versions 1.0.0, 2.0.0, 2.1.0, 2.2.0, 2.3.0, 2.4.0, 2.5.0, 2.6.0, 2.7.0, 2.8.0, 2.9.0, 2.10.0, 2.11.0, 2.12.0, 3.0.0, 3.1.0, 3.2.0, 3.3.0, 3.4.0, 3.5.0, 3.6.0, 3.7.0, 3.8.0, 3.9.0, 3.10.0, 3.11.0, 3.12.0, 3.13.0, 3.14.0, 3.15.0, 3.16.0, 3.17.0, 3.18.0, 4.0.0, 4.1.0, 4.2.0, 4.3.0, 4.4.0, 4.5.0, 4.6.0, 4.7.0, 4.8.0, 4.9.0, 4.10.0, 4.11.0, 4.12.0, 5.0.0, 5.1.0, 5.2.0, 5.3.0 et 5.4.0; il remplace les changelogs séparés des versions précédentes.
+Changelog cumulatif de l’extension Firefox Mon Mur. Ce document rassemble l’historique des versions 1.0.0, 2.0.0, 2.1.0, 2.2.0, 2.3.0, 2.4.0, 2.5.0, 2.6.0, 2.7.0, 2.8.0, 2.9.0, 2.10.0, 2.11.0, 2.12.0, 3.0.0, 3.1.0, 3.2.0, 3.3.0, 3.4.0, 3.5.0, 3.6.0, 3.7.0, 3.8.0, 3.9.0, 3.10.0, 3.11.0, 3.12.0, 3.13.0, 3.14.0, 3.15.0, 3.16.0, 3.17.0, 3.18.0, 4.0.0, 4.1.0, 4.2.0, 4.3.0, 4.4.0, 4.5.0, 4.6.0, 4.7.0, 4.8.0, 4.9.0, 4.10.0, 4.11.0, 4.12.0, 5.0.0, 5.1.0, 5.2.0, 5.3.0, 5.4.0 et 5.5.0; il remplace les changelogs séparés des versions précédentes.
+
+## Version 5.5.0 — préparation au partage et préférences plus lisibles
+
+- Réorganisation de l’explication « Recherches et enrichissements » dans Préférences → Données et accès : un résumé concis reste visible et le détail se déplie par thèmes, avec un contrôle clavier accessible.
+- Amélioration de la réactivité lors du changement de mur : le nouveau mur et son état s’affichent immédiatement, les réponses asynchrones obsolètes ne remplacent plus la sélection récente.
+- Activation du filtre de langue avec ses langues par défaut si aucune langue n’avait encore été choisie.
+- Préparation des fichiers de version et des instructions de partage et de débogage Firefox.
+- Les données restent dans le profil Firefox; aucune synchronisation collective des J’aime n’est incluse. Un éventuel mur collectif est une piste future, hors de cette version.
+- Cette version est préparée pour revue; les vérifications manuelles dans Firefox et la revue de publication restent à effectuer.
 
 ## Version 5.4.0 — lecture confortable et collecte fiabilisée
 
@@ -470,7 +479,7 @@ Changelog cumulatif de l’extension Firefox Mon Mur. Ce document rassemble l’
 - Conservation des articles : 3 jours pour les nouveaux murs personnalisés; les murs existants conservent leur durée lors de la migration. Archives : 2 jours; « À consulter plus tard » : 90 jours. Chaque durée se règle de 1 à 365 jours.
 - Actualisation automatique : toutes les 5 minutes, selon la planification de Firefox.
 - Affichage progressif : 20 cartes par lot.
-- Firefox 128 ou version ultérieure.
+- Firefox 140 ou version ultérieure sur ordinateur; Firefox 142 ou version ultérieure sur Android (selon le manifeste).
 
 ## Limites connues
 

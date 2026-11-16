@@ -13,6 +13,7 @@ npx --yes web-ext@10.7.0 build \
   --ignore-files \
     "README.md" \
     "cumulative.txt" \
+    "v5.4.0.txt" \
     "docs" \
     "scripts" \
     "tests" \
