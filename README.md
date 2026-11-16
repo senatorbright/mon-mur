@@ -1,8 +1,11 @@
-# Mon Mur
+# Mon Mur 5.6.0
 
 > Projet personnel, prototype fonctionnel et cahier des charges vivant, réalisé à 100 % par « vibe coding ». Il répondait aux besoins de son auteur; il est partagé pour être lu, repris et amélioré par des personnes qui souhaitent contribuer. Il n’y a pas d’engagement de maintenance ni de feuille de route de nouvelles fonctions. Le code Mon Mur est distribué sous licence GNU GPL v3; les ressources tierces gardent leurs licences et réserves propres, détaillées dans [les avis](THIRD_PARTY_NOTICES.md) et [l’inventaire des ressources](docs/amo/ASSET-LICENSES.fr.md).
 
 Extension Firefox personnelle qui conserve localement des articles de sources choisies par l’utilisateur.
+
+Extension Firefox expérimentale, réalisée par « vibe coding ». Mon Mur fonctionne dans le navigateur, sans compte Mon Mur ni serveur applicatif dédié : les sources RSS/Atom sont collectées et les pages compatibles sont extraites depuis Firefox, puis les données restent dans le profil local. Elle sert à lire et organiser des articles dans des murs thématiques, suivre des sources et sujets, filtrer et conserver des contenus, et retrouver ses J’aime.
+
 
 ## Installation temporaire
 
@@ -100,3 +103,9 @@ Si une publication Bluesky inclut un lien externe, développer sa carte récupè
 ## Documents Internet Archive
 
 Dans **Préférences → Murs → Murs automatiques**, **Documents PDF en français** alimente le mur automatique **PDF auto** avec les mots-clés prioritaires des murs. Seuls les PDF dont les métadonnées Internet Archive déclarent le français (`fr`, `fre`, `fra` ou `French`) sont gardés; les langues absentes ou différentes sont écartées. Les résultats sont triés par date d’ajout à Internet Archive; le collecteur traite jusqu’à huit mots-clés par actualisation, vérifie au plus cinq fiches de métadonnées par mot-clé et conserve jusqu’à trois PDF accessibles par terme. Il espace les recherches manuelles d’au moins une minute. Il exige aussi une correspondance dans le titre pour réduire les résultats hors sujet. Les entrées sont dédupliquées par identifiant Internet Archive et leurs dates de publication et d’archivage restent distinctes sur les cartes. Les PDF ne sont pas téléchargés ni analysés.
+
+## Limites de cette version
+
+Le projet reste expérimental. Les collectes dépendent des flux et des pages accessibles; le scraping depuis le navigateur peut être limité par les sites ou les autorisations Firefox. Le XPI construit localement est non signé et ne représente pas une validation Mozilla. Les essais manuels Firefox de cette publication restent nécessaires.
+
+Le changelog cumulatif est disponible dans [`v5.6.0.txt`](v5.6.0.txt). Le code Mon Mur est sous GNU GPLv3 ([`LICENSE`](LICENSE)); les ressources tierces conservent leurs licences et l’icône Mon Mur et les pictogrammes génériques ajoutés pour cette version sont également distribués sous GPLv3.

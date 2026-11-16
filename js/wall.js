@@ -33,7 +33,7 @@ function updateWallStatus(articleCount,sourceCount){const status=$("#status"),au
 function stopOtherWallVideos(wallId,exceptArticleId=""){for(const card of document.querySelectorAll(".card"))if(card.dataset.wallId===wallId&&card.dataset.articleId!==exceptArticleId)card.stopActiveVideo?.();}
 function announceVideoStart(articleId){stopOtherWallVideos(state.activeWallId,articleId);browser.runtime.sendMessage({type:"videoStarted",wallId:state.activeWallId,articleId,viewId:wallViewId}).catch(()=>{});}
 const FALLBACK_FAVICON=browser.runtime.getURL("icons/source-neutral.svg");
-const PLATFORM_ICONS={YouTube:browser.runtime.getURL("icons/youtube.svg"),PeerTube:browser.runtime.getURL("icons/peertube.svg"),CrowdBunker:browser.runtime.getURL("icons/crowdbunker.png"),Rumble:browser.runtime.getURL("icons/rumble.svg"),Bluesky:browser.runtime.getURL("icons/bluesky.svg"),LinkedIn:browser.runtime.getURL("icons/linkedin.svg")};
+const PLATFORM_ICONS={YouTube:browser.runtime.getURL("icons/source-video-play.svg"),PeerTube:browser.runtime.getURL("icons/source-network.svg"),CrowdBunker:browser.runtime.getURL("icons/source-camera.svg"),Rumble:browser.runtime.getURL("icons/rumble.svg"),Bluesky:browser.runtime.getURL("icons/source-conversation.svg"),LinkedIn:browser.runtime.getURL("icons/source-people.svg")};
 function text(el,value){el.textContent=value;}
 let imagePreviewDialog;
 function bestImageUrl(image){

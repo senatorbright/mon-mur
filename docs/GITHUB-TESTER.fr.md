@@ -34,8 +34,8 @@ Mon Mur est un projet personnel réalisé à 100 % par « vibe coding ». Il peu
 
 Le partage collectif des J’aime avec un mur automatique commun est une idée éventuelle, pas une fonction disponible ni une promesse de réalisation. Le projet n’introduit aujourd’hui ni compte utilisateur ni serveur Mon Mur; toute proposition de partage à distance devrait préciser comment elle respecte ces contraintes.
 
-**Licence du projet : GNU GPL v3**, fournie dans `LICENSE`. Les composants tiers et ressources graphiques conservent leurs licences et conditions propres, récapitulées dans `THIRD_PARTY_NOTICES.md` et `amo/ASSET-LICENSES.fr.md`; certaines origines ou permissions d’icônes restent à confirmer.
+**Licence du projet : GNU GPL v3**, fournie dans `LICENSE`. Les composants tiers et ressources graphiques conservent leurs licences et conditions propres, récapitulées dans `THIRD_PARTY_NOTICES.md` et `amo/ASSET-LICENSES.fr.md`; les visuels de plateforme sans provenance établie ont été remplacés par des pictogrammes originaux sous GPLv3.
 
 ## État de la version 5.6.0
 
-La version est préparée localement pour revue. Un paquet construit ne signifie pas qu’il a été testé manuellement dans Firefox, signé, soumis à AMO ou publié sur GitHub. Consulter [BUILD-AND-REVIEW.fr.md](amo/BUILD-AND-REVIEW.fr.md) pour le suivi de publication.
+La version 5.6.0 est publiée comme code source dans ce dépôt. Les essais manuels Firefox restent à effectuer; les archives locales sont non signées et ne constituent ni une signature Mozilla ni une soumission AMO. Consulter [BUILD-AND-REVIEW.fr.md](amo/BUILD-AND-REVIEW.fr.md) pour les contrôles de construction.

@@ -56,15 +56,12 @@ The JavaScript runtime and WebAssembly files are bundled locally; face detection
 - The same included copy of the Apache License 2.0 applies to this model.
 - SHA-256 of the distributed model: `b4578f35940bf5a1a655214a1cce5cab13eba73c1297cd78e1a04c2380b0152f`.
 
-## Platforms and visual identifiers
+## Platforms and generic pictograms
 
-Mon Mur uses these third-party platforms for source collection, article links, or automatic walls. Their names and marks remain the property of their respective owners; their appearance in Mon Mur does not imply endorsement.
+Mon Mur uses third-party platform names for source collection and article links. Their appearance does not imply endorsement. The five former platform marks of uncertain provenance have been replaced by original, generic interface pictograms in `icons/source-video-play.svg`, `icons/source-network.svg`, `icons/source-camera.svg`, `icons/source-people.svg`, and `icons/source-conversation.svg`. They were drawn for Mon Mur, are not derived from platform logos, and are distributed with the project under GPLv3. The service names remain visible beside them.
 
-- **YouTube** and **PeerTube**: optional video sources. The simplified SVG identifiers in `icons/youtube.svg` and `icons/peertube.svg` are used in preferences and video cards.
-- **CrowdBunker**: optional video source. `icons/crowdbunker.png` is its public site favicon, downloaded from <https://crowdbunker.com/favicon.png>.
-- **Rumble**: optional video source. `icons/rumble.svg` is the Rumble mark from Simple Icons, licensed CC0 1.0: <https://github.com/simple-icons/simple-icons>.
-- **Bluesky**: optional social source. `icons/bluesky.svg` is the standalone butterfly from Bluesky's official brand assets: <https://bsky.social/about/support/icons>. Use remains subject to Bluesky's trademark policy and brand guidelines.
-- **LinkedIn**: optional social source. `icons/linkedin.svg` is used by the interface; its author, source, and redistribution permission are not documented in this repository. See `docs/amo/ASSET-LICENSES.fr.md` before redistribution.
+`icons/rumble.svg` remains the Rumble mark from Simple Icons, licensed CC0 1.0: <https://github.com/simple-icons/simple-icons>. The previous Mon Mur application icon had no recorded provenance and was replaced in 5.6.0 with an original generic wall-of-cards illustration created for Mon Mur and distributed under GPLv3.
+
 - **Internet Archive**: public metadata and document listings are used by the optional PDF automatic wall: <https://archive.org/>.
 - **AlloCiné** and **Wikipedia**: optional cinema metadata lookups use article titles to find matching public film or series information when the user has allowed automatic searches. The resulting pages remain under their respective services' terms and attribution requirements.
 - **Dailymotion**: compatible video articles can use Dailymotion's embedded player. Mon Mur does not bundle its player code or visual assets.

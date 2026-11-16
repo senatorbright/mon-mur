@@ -9,8 +9,8 @@ Changelog cumulatif de l’extension Firefox Mon Mur. Ce document rassemble l’
 - Fiabilisation de l’activation des techniques de persuasion : l’interface confirme le réglage lorsque l’écriture dans le stockage Firefox est terminée.
 - Mise à jour des références de version, du changelog affiché dans l’extension et des instructions de test et de construction pour le dépôt GitHub autonome.
 - Le projet reste un prototype personnel issu à 100 % du « vibe coding », partagé comme cahier des charges fonctionnel. Les contributions communautaires sont possibles; le partage des J’aime demeure une piste sans compte ni serveur, hors de cette version.
-- Les icônes de certaines plateformes restent soumises aux réserves de droits consignées dans l’inventaire des ressources; elles n’ont pas été remplacées dans cette version.
-- La suite automatisée passe avec 284 tests réussis. Les archives ZIP/XPI 5.6.0 sont construites et contrôlées; le XPI est non signé. Les essais manuels dans Firefox et la revue des droits des icônes restent à effectuer avant diffusion.
+- Les visuels de YouTube, PeerTube, LinkedIn, CrowdBunker et Bluesky ont été remplacés par des pictogrammes génériques originaux sous GPLv3; leurs noms restent affichés à côté des pictogrammes. L’ancienne icône Mon Mur sans provenance documentée a été remplacée par une illustration originale distribuée sous GPLv3. Les ressources sont décrites dans l’inventaire.
+- La suite automatisée passe avec 284 tests réussis. Les archives ZIP/XPI 5.6.0 sont construites et contrôlées; le XPI est non signé. Les essais manuels dans Firefox restent à effectuer avant diffusion.
 
 ## Version 5.5.0 — préparation au partage et préférences plus lisibles
 

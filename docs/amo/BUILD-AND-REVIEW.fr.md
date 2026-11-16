@@ -4,9 +4,9 @@
 
 Le manifeste cible `5.6.0`. La version corrige l’état du filtre linguistique lorsque d’anciennes valeurs étaient conservées au niveau d’un mur, et fiabilise la confirmation visuelle de l’activation des techniques de persuasion. Les références de version, le changelog cumulatif et les instructions de test/construction sont actualisés.
 
-Le dépôt GitHub public `senatorbright/mon-mur` est déjà créé, sous GPL v3. La préparation locale n’a effectué aucun push. Certaines ressources graphiques de plateformes restent documentées avec des droits de redistribution à confirmer dans `ASSET-LICENSES.fr.md`; elles sont conservées en l’état, sans remplacement.
+Le dépôt GitHub public `senatorbright/mon-mur` est sous GPL v3. Les cinq icônes de plateforme sans provenance fiable et l’ancienne icône Mon Mur ont été remplacées par des pictogrammes originaux distribués sous GPLv3; le pictogramme Rumble sous CC0 est conservé.
 
-La suite automatisée passe avec 284 tests réussis et aucun échec. `./scripts/build-release.sh` produit `web-ext-artifacts/mon-mur-5.6.0.zip` et `web-ext-artifacts/mon-mur-5.6.0.xpi`; les deux archives ont été contrôlées comme ZIP valides. Le XPI est non signé; il ne s’agit ni d’une signature Mozilla ni d’une soumission AMO. Les tests manuels Firefox restent nécessaires.
+La suite automatisée passe avec 284 tests réussis et aucun échec. `web-ext lint` sur le contenu exact du paquet rapporte 0 erreur, 0 notice et 9 avertissements (affectations `innerHTML` et constructeur `Function` dans les bibliothèques); ils restent à examiner. `./scripts/build-release.sh` produit `web-ext-artifacts/mon-mur-5.6.0.zip` et `web-ext-artifacts/mon-mur-5.6.0.xpi`; les deux archives ont été contrôlées comme ZIP valides et leur contenu correspond entre le dossier de développement et le clone GitHub. Le XPI est non signé; il ne s’agit ni d’une signature Mozilla ni d’une soumission AMO. Les tests manuels Firefox restent nécessaires.
 
 ## Préparation 4.2.0 (2 novembre 2026)
 
