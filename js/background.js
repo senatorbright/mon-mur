@@ -233,6 +233,36 @@ async function state() {
 async function cleanReadingStates(){const stored=await browser.storage.local.get({articleStates:{},settings:MMP.DEFAULTS.settings,sourceHistoryMigrationVersion:0}),articleStates=stored.articleStates||{},settings=stored.settings||{},cutoffs={read:Date.now()-Math.max(1,Number(settings.archiveRetentionDays)||2)*86400000,later:Date.now()-Math.max(1,Number(settings.laterRetentionDays)||90)*86400000},expired=[];if(Number(stored.sourceHistoryMigrationVersion)<1){const bySource=new Map();for(const article of await MMPDB.all())for(const id of article.sourceIds||[article.sourceId])if(id){if(!bySource.has(id))bySource.set(id,[]);bySource.get(id).push(article);}for(const [id,rows] of bySource)await MMPDB.rememberSourceArticles(id,rows,{acquiredCanonicalUrls:rows.map(row=>row.canonicalUrl)});await browser.storage.local.set({sourceHistoryMigrationVersion:1});}let changed=false;for(const [id,item] of Object.entries(articleStates)){const cutoff=cutoffs[item?.status],isExpired=Number(item?.updatedAt)>0&&cutoff&&Number(item.updatedAt)<=cutoff;if(!item?.updatedAt||isExpired||!cutoff){delete articleStates[id];changed=true;if(isExpired)expired.push(id);}}if(changed)await browser.storage.local.set({articleStates});if(expired.length)await MMPDB.removeArticles(expired);return articleStates;}
 const LIKE_RETENTION_DAYS = 60;
 const SOURCE_URL_HISTORY_DAYS = 7;
+function deduplicateArticlesByCanonicalUrl(articles, articleStates, likedUrls) {
+  const byUrl = new Map();
+  for (const article of articles) {
+    const canonicalUrl = MMP.cleanUrl(article.canonicalUrl) || article.canonicalUrl;
+    if (!canonicalUrl) continue;
+    const previous = byUrl.get(canonicalUrl);
+    if (!previous) {
+      byUrl.set(canonicalUrl, { ...article, canonicalUrl, readingState: articleStates[article.id] || null });
+      continue;
+    }
+    const previousState = previous.readingState, incomingState = articleStates[article.id] || null;
+    const readingState = incomingState && (!previousState || Number(incomingState.updatedAt) > Number(previousState.updatedAt)) ? incomingState : previousState;
+    const merged = {
+      ...previous, ...article, canonicalUrl,
+      title: previous.title && article.title ? [previous.title, article.title].sort((a, b) => a.length - b.length)[0] : previous.title || article.title,
+      summary: previous.summary || article.summary || "",
+      image: previous.image || article.image || "",
+      sourceIds: [...new Set([...(previous.sourceIds || [previous.sourceId]), ...(article.sourceIds || [article.sourceId])])],
+      readingState,
+      liked: likedUrls.has(MMP.normalizeContentUrl(canonicalUrl))
+    };
+    if (previous.dateIsFallback && !article.dateIsFallback) {
+      merged.publishedAt = article.publishedAt; merged.dateIsFallback = false; merged.datePrecision = article.datePrecision;
+    } else if (!previous.dateIsFallback && article.dateIsFallback) {
+      merged.publishedAt = previous.publishedAt; merged.dateIsFallback = false; merged.datePrecision = previous.datePrecision;
+    }
+    byUrl.set(canonicalUrl, merged);
+  }
+  return [...byUrl.values()].map(article => ({ ...article, liked: likedUrls.has(MMP.normalizeContentUrl(article.canonicalUrl)) }));
+}
 async function cleanExpiredLikes(){const removed=await MMPDB.removeExpiredLikes(Date.now()-LIKE_RETENTION_DAYS*86400000);for(const normalizedUrl of removed)browser.runtime.sendMessage({type:"likesUpdated",normalizedUrl,liked:false}).catch(()=>{});}
 async function clearOrphanedReadingStates(articleIds = [], sourceId = "", incomingRows = []){const removed=new Set(articleIds),keep=new Set(incomingRows.map(row=>row.canonicalUrl)),{articleStates={}}=await browser.storage.local.get({articleStates:{}});let changed=false;for(const [id,item] of Object.entries(articleStates)){const article=item?.article;if(removed.has(id)||(sourceId&&article&&(article.sourceIds||[article.sourceId]).includes(sourceId)&&!keep.has(article.canonicalUrl)&&!(article.sourceIds||[article.sourceId]).some(other=>other!==sourceId))){delete articleStates[id];changed=true;}}if(changed)await browser.storage.local.set({articleStates});}
 const FIRST_COLLECTION_LOOKBACK_MS = 10 * 60 * 60 * 1000;
@@ -2189,8 +2219,8 @@ async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique") {
   const persistProgress = () => {
     const snapshot = { ...progress, currentSourceIds: [...progress.currentSourceIds] };
     const write = progressWrites.then(() => browser.storage.local.set({ sources, refreshStatus: snapshot }));
-    progressWrites = write.catch(() => {});
-    return write;
+    progressWrites = write.catch(error => { console.warn("Enregistrement de la progression d’actualisation impossible", error); });
+    return progressWrites;
   };
   await browser.storage.local.set({ refreshStatus: progress });
   let cachedArticles;
@@ -2207,13 +2237,15 @@ async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique") {
   const knownImages = new Map(cachedArticles.filter(a => a.image).map(a => [a.canonicalUrl, a.image]));
   {
     const batch = active;
-    progress.currentSourceIds = batch.map(source => source.id);
+    progress.currentSourceIds = [];
     await persistProgress();
-    await Promise.all(batch.map(async source => {
+    for (const source of batch) {
       let previousSuccessfulSync = Number(source.lastSuccessfulSync) || 0;
       let firstCollectionStartedAt = 0;
       let attemptAt = 0, attemptStage = "préparation et accès", attemptResult = null, attemptRows = null, attemptKnownSourceUrls = null, attemptPersistenceDiagnostics = null, attemptStorageCompleted = false;
       const sourceDeadlineAt = Date.now() + 15000, remainingSourceTime = () => Math.max(0, sourceDeadlineAt - Date.now());
+      progress.currentSourceIds = [source.id];
+      await persistProgress();
       try {
         previousSuccessfulSync ||= Number(await MMPDB.sourceSync(source.id)) || Number(source.lastSync) || 0;
         if (!previousSuccessfulSync) firstCollectionStartedAt = Date.now();
@@ -2285,7 +2317,7 @@ async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique") {
         progress.currentSourceIds = progress.currentSourceIds.filter(id => id !== source.id);
         await persistProgress();
       }
-    }));
+    }
   }
   try {
     // Revisit stored items too: many RSS sources drop older entries before
@@ -2574,9 +2606,12 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
     await cleanExpiredLikes();
     const [current, articles, likes, articleStates] = await Promise.all([state(), MMPDB.all(), MMPDB.likes(), cleanReadingStates()]);
     const counts = { walls: 0, discovery: 0, sources: current.sources.filter(source => source.enabled && source.status === "error").length, likes: likes.length, later: 0, archived: 0 };
-    for (const item of Object.values(articleStates)) {
-      if (item?.status === "later") counts.later++;
-      if (item?.status === "read") counts.archived++;
+    const byId = new Map(articles.map(article => [article.id, article]));
+    for (const [id, item] of Object.entries(articleStates)) if (!byId.has(id) && item.article) byId.set(id, { ...item.article, id });
+    const countableArticles = deduplicateArticlesByCanonicalUrl([...byId.values()], articleStates, new Set(likes.map(item => item.normalizedUrl)));
+    for (const article of countableArticles) {
+      if (article.readingState?.status === "later") counts.later++;
+      if (article.readingState?.status === "read") counts.archived++;
     }
     const allExcludedKeywords = [...new Map([
       ...(current.settings?.excludedKeywords || []),
@@ -2589,9 +2624,10 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
       const sourceIds = new Set(current.sources.filter(source => (source.wallIds || []).includes(wall.id)).map(source => source.id));
       const excludedKeywords = (settings.excludedKeywords || []).map(item => typeof item === "string" ? item : item.term).filter(Boolean);
       const excludedCategories = new Set((settings.excludedCategories || []).map(MMP.normalizeText));
-      const cutoff = Date.now() - Math.max(1, Number(settings.retentionDays) || 30) * 86400000;
-      for (const article of articles) {
-        if (articleStates[article.id]) continue;
+      const config = current.wallSettings?.[wall.id] || {};
+      const cutoff = Date.now() - Math.max(1, Number(config.retentionDays) || 3) * 86400000;
+      for (const article of countableArticles) {
+        if (article.readingState) continue;
         if (Number(article.publishedAt || article.discoveredAt || 0) < cutoff) continue;
         if (!(article.sourceIds || [article.sourceId]).some(id => sourceIds.has(id))) continue;
         if (excludedKeywords.some(term => MMP.matchTerm(`${article.title} ${article.summary || ""}`, term))) continue;
@@ -2612,18 +2648,18 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
       return language==="und"?languageSettings.languageFilterKeepUnknown===true:(languageSettings.languageFilterLanguages||[]).includes(language);
     };
     const autoCandidates=[];
-    if (current.automaticWalls?.videos !== false) for (const article of articles) {
-      if (articleStates[article.id] || excludedFromAutomatic(article)) continue;
+    if (current.automaticWalls?.videos !== false) for (const article of countableArticles) {
+      if (article.readingState || excludedFromAutomatic(article)) continue;
       const ids = article.sourceIds || [article.sourceId];
       if (ids.some(id => id === YOUTUBE_SOURCE_ID && videoProviders.youtube !== false || id === PEERTUBE_SOURCE_ID && videoProviders.peertube !== false || id === CROWDBUNKER_SOURCE_ID && videoProviders.crowdbunker === true || id === RUMBLE_SOURCE_ID && videoProviders.rumble === true)) autoCandidates.push([article,"youtube"]);
     }
-    if (current.automaticWalls?.bluesky === true) for (const article of articles) {
-      if (articleStates[article.id] || article.blueskyAdult === true || excludedFromAutomatic(article)) continue;
+    if (current.automaticWalls?.bluesky === true) for (const article of countableArticles) {
+      if (article.readingState || article.blueskyAdult === true || excludedFromAutomatic(article)) continue;
       const ids = article.sourceIds || [article.sourceId], french = (article.blueskyLangs || []).some(language => /^fr(?:-|$)/i.test(String(language))), eligible=ids.includes(BLUESKY_SOURCE_ID)&&socialProviders.bluesky!==false&&(current.blueskyFrenchOnly!==true||(article.blueskyLangs||[]).length===0||french)&&(current.blueskyRequireImage!==true||!!article.image)||ids.includes("linkedin-keyword-search")&&socialProviders.linkedin===true&&(current.linkedinRequireImage!==true||!!article.image);
       if(eligible)autoCandidates.push([article,"bluesky"]);
     }
-    if (current.automaticWalls?.internetArchive !== false) for (const article of articles) {
-      if (!articleStates[article.id] && !excludedFromAutomatic(article) && article.documentKind === "pdf" && article.documentLanguage === "fr" && (article.sourceIds || [article.sourceId]).includes(`${INTERNET_ARCHIVE_SOURCE_PREFIX}documents`)) autoCandidates.push([article,"documents"]);
+    if (current.automaticWalls?.internetArchive !== false) for (const article of countableArticles) {
+      if (!article.readingState && !excludedFromAutomatic(article) && article.documentKind === "pdf" && article.documentLanguage === "fr" && (article.sourceIds || [article.sourceId]).includes(`${INTERNET_ARCHIVE_SOURCE_PREFIX}documents`)) autoCandidates.push([article,"documents"]);
     }
     let candidateIndex=0;
     await Promise.all(Array.from({length:Math.min(4,autoCandidates.length)},async()=>{while(candidateIndex<autoCandidates.length){const [article,kind]=autoCandidates[candidateIndex++];if(await languagePasses(article,kind))unreadWallArticleIds.add(article.id);}}));
@@ -2638,7 +2674,7 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
   }
   if (msg.type === "probeArticleVideo") return probeArticleVideo(msg.articleId);
   if (msg.type === "resolveFranceTvVideo") return resolveFranceTvVideo(msg.videoId, msg.pageUrl);
-  if (msg.type === "articles") {await cleanExpiredLikes();const articleStates=await cleanReadingStates(),[articles,likes]=await Promise.all([MMPDB.all(),MMPDB.likes()]),liked=new Set(likes.map(item=>item.normalizedUrl)),byId=new Map(articles.map(a=>[a.id,a]));for(const [id,item] of Object.entries(articleStates))if(!byId.has(id)&&item.article)byId.set(id,{...item.article,id});return [...byId.values()].map(a=>({...a,readingState:articleStates[a.id]||null,liked:liked.has(MMP.normalizeContentUrl(a.canonicalUrl))}));}
+  if (msg.type === "articles") {await cleanExpiredLikes();const articleStates=await cleanReadingStates(),[articles,likes]=await Promise.all([MMPDB.all(),MMPDB.likes()]),liked=new Set(likes.map(item=>item.normalizedUrl)),byId=new Map(articles.map(a=>[a.id,a]));for(const [id,item] of Object.entries(articleStates))if(!byId.has(id)&&item.article)byId.set(id,{...item.article,id});return deduplicateArticlesByCanonicalUrl([...byId.values()],articleStates,liked);}
   if (msg.type === "likes") { await cleanExpiredLikes(); return (await MMPDB.likes()).sort((a,b)=>b.likedAt-a.likedAt); }
   if (msg.type === "toggleLike") {
     const article = msg.article && typeof msg.article === "object" ? msg.article : await MMPDB.get(msg.articleId);
@@ -2913,6 +2949,13 @@ async function init() {
   // Its returned `settings` also contains the active wall's filters and mode;
   // writing that merged view back as global settings would mix the two scopes.
   const current = await state(); await browser.storage.local.remove("pendingDiscoveries"); await ensureProcessedDiscoveryMemory(current.sources); await cleanReadingStates();
+  // A newly started background context cannot still own the refresh recorded
+  // by its predecessor. Clear that abandoned in-progress marker so the stale
+  // refresh check below can resume collection immediately.
+  const { refreshStatus = {} } = await browser.storage.local.get({ refreshStatus: {} });
+  if (refreshStatus.startedAt && !refreshStatus.completedAt) {
+    await browser.storage.local.set({ refreshStatus: { ...refreshStatus, startedAt: 0, completedAt: 0, currentSourceIds: [] } });
+  }
   for (const source of current.sources) if (!(await MMPDB.sourceSync(source.id))) { const lastSuccessfulSync = Number(source.lastSuccessfulSync) || Number(source.lastSync) || 0; if (lastSuccessfulSync) await MMPDB.setSourceSync(source.id, lastSuccessfulSync); }
   const alarm = await browser.alarms.get(ALARM);
   const interval = await refreshInterval();

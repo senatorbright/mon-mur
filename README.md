@@ -1,4 +1,4 @@
-# Mon Mur 5.6.0
+# Mon Mur 5.8.0
 
 > Projet personnel, prototype fonctionnel et cahier des charges vivant, réalisé à 100 % par « vibe coding ». Il répondait aux besoins de son auteur; il est partagé pour être lu, repris et amélioré par des personnes qui souhaitent contribuer. Il n’y a pas d’engagement de maintenance ni de feuille de route de nouvelles fonctions. Le code Mon Mur est distribué sous licence GNU GPL v3; les ressources tierces gardent leurs licences et réserves propres, détaillées dans [les avis](THIRD_PARTY_NOTICES.md) et [l’inventaire des ressources](docs/amo/ASSET-LICENSES.fr.md).
 
@@ -27,6 +27,10 @@ Dans l’espace **Découverte**, lancez une recherche DuckDuckGo manuelle par mo
 - Les filtres, priorités, le classement et la durée de conservation sont propres à chaque mur. La durée par défaut des nouveaux murs est de 3 jours; la durée globale antérieure est reprise pour les murs déjà présents.
 - Dans le panneau de l’extension, « Suivre cette page » permet de choisir un ou plusieurs murs et d’en créer un sans quitter le panneau. Une source suivie peut voir ses associations modifiées.
 - La sauvegarde des préférences contient les murs créés et leur ordre, leurs filtres et priorités, les durées de conservation et les sources avec leurs associations aux murs. Les articles stockés ne sont pas inclus. Une ancienne sauvegarde sans sources laisse la liste des sources actuelle intacte.
+
+## Lecture sur petit écran et taille du texte
+
+Sur smartphone, la navigation latérale se replie pour laisser toute la largeur aux vignettes. Le bouton flottant l’ouvre, un glissement depuis le bord gauche la fait réapparaître, et un toucher hors du menu le referme. Les commandes des cartes sont adaptées aux écrans tactiles. Le réglage **A 100 % à A 150 %** agrandit les titres, résumés et articles sur ordinateur et smartphone; le choix est mémorisé.
 
 ## Fonctionnement
 
@@ -108,4 +112,4 @@ Dans **Préférences → Murs → Murs automatiques**, **Documents PDF en franç
 
 Le projet reste expérimental. Les collectes dépendent des flux et des pages accessibles; le scraping depuis le navigateur peut être limité par les sites ou les autorisations Firefox. Le XPI construit localement est non signé et ne représente pas une validation Mozilla. Les essais manuels Firefox de cette publication restent nécessaires.
 
-Le changelog cumulatif est disponible dans [`v5.6.0.txt`](v5.6.0.txt). Le code Mon Mur est sous GNU GPLv3 ([`LICENSE`](LICENSE)); les ressources tierces conservent leurs licences et l’icône Mon Mur et les pictogrammes génériques ajoutés pour cette version sont également distribués sous GPLv3.
+Le changelog cumulatif est disponible dans [`v5.8.0.txt`](v5.8.0.txt). Le code Mon Mur est sous GNU GPLv3 ([`LICENSE`](LICENSE)); les ressources tierces conservent leurs licences et l’icône Mon Mur et les pictogrammes génériques introduits en 5.6.0 sont également distribués sous GPLv3.

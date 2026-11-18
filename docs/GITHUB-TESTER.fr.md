@@ -36,6 +36,6 @@ Le partage collectif des J’aime avec un mur automatique commun est une idée �
 
 **Licence du projet : GNU GPL v3**, fournie dans `LICENSE`. Les composants tiers et ressources graphiques conservent leurs licences et conditions propres, récapitulées dans `THIRD_PARTY_NOTICES.md` et `amo/ASSET-LICENSES.fr.md`; les visuels de plateforme sans provenance établie ont été remplacés par des pictogrammes originaux sous GPLv3.
 
-## État de la version 5.6.0
+## État de la version 5.8.0
 
-La version 5.6.0 et ses sources sont publiées dans ce dépôt. Les essais manuels Firefox restent à effectuer; le XPI de la Release est non signé et ne constitue ni une signature Mozilla ni une soumission AMO. Consulter [BUILD-AND-REVIEW.fr.md](amo/BUILD-AND-REVIEW.fr.md) pour les contrôles de construction.
+La version 5.8.0 est préparée dans les sources. Les 284 tests automatisés passent. `web-ext lint` rapporte 0 erreur, 0 notice et 16 avertissements à examiner. Les archives ZIP et XPI non signé 5.8.0 sont construites et contrôlées; les essais manuels Firefox restent nécessaires avant diffusion. Consulter [BUILD-AND-REVIEW.fr.md](amo/BUILD-AND-REVIEW.fr.md) pour l’état des contrôles.

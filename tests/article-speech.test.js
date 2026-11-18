@@ -94,7 +94,7 @@ test("reading controls live in the sticky toolbar beside the expanded article co
   assert.match(wall, /title="Arrêter"/);
   assert.doesNotMatch(wall, /pauseButton\.textContent/);
   assert.match(wall, /topCollapse\.onclick=toggleArticle/);
-  assert.match(wall, /if\(!expanded\) \{if\(activeSpeechArticleId===a\.id\)articleSpeech\.stop\(\)/);
+  assert.match(wall, /if\(!expanded\)\s*\{[\s\S]{0,160}activeSpeechArticleId===a\.id\)articleSpeech\.stop\(\)/);
   assert.match(css, /\.expanded-toolbar\{position:sticky/);
   assert.doesNotMatch(wall, /className="speech-voice"/);
 });

@@ -11,6 +11,8 @@ let keepNavigationCollapsedAtTop=false;
 let hlsLibraryPromise=null;
 const articleSpeech=new MMArticleSpeech.ArticleSpeech(window);let activeSpeechArticleId="";
 function configureArticleSpeech(settings=state?.settings||{}){articleSpeech.setLanguage(settings.speechLanguage||"fr-FR");articleSpeech.setVoice(settings.speechVoiceURI||"");for(const controls of document.querySelectorAll(".article-speech-controls"))controls.refreshAvailability?.();}
+const readingScaleControl=$("#readingScale");
+if(readingScaleControl){const savedScale=localStorage.getItem("monMurReadingScale")||"1";readingScaleControl.value=[...readingScaleControl.options].some(option=>option.value===savedScale)?savedScale:"1";document.documentElement.style.setProperty("--reading-scale",readingScaleControl.value);readingScaleControl.addEventListener("change",()=>{document.documentElement.style.setProperty("--reading-scale",readingScaleControl.value);localStorage.setItem("monMurReadingScale",readingScaleControl.value);});}
 articleSpeech.onVoicesChanged(()=>{for(const controls of document.querySelectorAll(".article-speech-controls"))controls.refreshAvailability?.();});
 function loadHlsLibrary(){if(window.Hls)return Promise.resolve(window.Hls);if(hlsLibraryPromise)return hlsLibraryPromise;hlsLibraryPromise=new Promise((resolve,reject)=>{const script=document.createElement("script");script.src=browser.runtime.getURL("vendor/hls.min.js");script.onload=()=>window.Hls?resolve(window.Hls):reject(new Error("La bibliothèque HLS n’a pas été initialisée."));script.onerror=()=>reject(new Error("La bibliothèque HLS n’a pas pu être chargée."));document.head.append(script);}).catch(error=>{hlsLibraryPromise=null;throw error;});return hlsLibraryPromise;}
 let dashLibraryPromise=null;
@@ -394,11 +396,11 @@ function card(a) {
   const status=document.createElement("p"); status.className="expanded-status muted"; status.setAttribute("role","status"); status.hidden=true;
   const content=document.createElement("div"); content.className="expanded-content";
   const original=document.createElement("a"); original.className="expanded-original"; original.href=a.linkedinOriginalUrl||a.canonicalUrl; original.target="_blank"; original.rel="noopener noreferrer"; original.textContent="Lire sur le site d’origine ↗"; original.hidden=true;
-  const topCollapse=document.createElement("button");topCollapse.type="button";topCollapse.className="expand-toggle expanded-collapse-top";topCollapse.setAttribute("aria-controls",articleBody.id);topCollapse.setAttribute("aria-expanded","false");topCollapse.setAttribute("aria-label",`Développer l’article : ${a.title}`);topCollapse.textContent="↑ Replier";topCollapse.hidden=true;
+  const topCollapse=document.createElement("button");topCollapse.type="button";topCollapse.className="expand-toggle expanded-collapse-top is-expanded";topCollapse.setAttribute("aria-controls",articleBody.id);topCollapse.setAttribute("aria-expanded","false");topCollapse.setAttribute("aria-label",`Développer l’article : ${a.title}`);topCollapse.innerHTML='<svg class="article-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg><span class="article-action-label">Replier</span>';topCollapse.hidden=true;
   const readerToolbar=document.createElement("div");readerToolbar.className="expanded-toolbar";readerToolbar.append(topCollapse);
   articleBody.append(readerToolbar,status,content,original); article.append(articleBody);
   const actionBar=document.createElement("div");actionBar.className="article-actions";
-  const toggle=document.createElement("button"); toggle.className="expand-toggle"; toggle.type="button"; toggle.setAttribute("aria-controls",articleBody.id); toggle.setAttribute("aria-expanded","false"); toggle.setAttribute("aria-label",`Développer l’article : ${a.title}`); toggle.textContent="⌄"; actionBar.append(toggle);
+  const toggle=document.createElement("button"); toggle.className="expand-toggle"; toggle.type="button"; toggle.setAttribute("aria-controls",articleBody.id); toggle.setAttribute("aria-expanded","false"); toggle.setAttribute("aria-label",`Développer l’article : ${a.title}`); toggle.innerHTML='<svg class="article-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg><span class="article-action-label">Ouvrir</span>'; actionBar.append(toggle);
   renderAffiliateNotice(article,a,articleBody);
   const speechControls=document.createElement("div");speechControls.className="article-speech-controls";speechControls.hidden=true;
   const readButton=document.createElement("button");readButton.type="button";readButton.className="article-speech-button";readButton.setAttribute("aria-label",`Lire l’article à voix haute : ${a.title}`);readButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 9.5a4 4 0 0 1 0 5M18.5 7a7.5 7.5 0 0 1 0 10"/></svg><span>Lire</span>';
@@ -433,10 +435,10 @@ function card(a) {
   stopButton.onclick=()=>articleSpeech.stop();
   speechControls.append(readButton,pauseButton,stopButton);readerToolbar.append(speechControls);
   const autoWall=state.autoWalls?.find(w=>w.id===state.activeWallId);
-  const addAction=(label,icon,status)=>{const button=document.createElement("button");button.type="button";button.className="article-action";button.title=label;button.setAttribute("aria-label",`${label} : ${a.title}`);button.innerHTML=icon;button.onclick=()=>setReadingStatus(a,status);actionBar.append(button);};
+  const addAction=(label,icon,status)=>{const button=document.createElement("button");button.type="button";button.className="article-action";button.title=label;button.setAttribute("aria-label",`${label} : ${a.title}`);button.innerHTML=`${icon}<span class="article-action-label">${status==="read"?"Lu":"Plus tard"}</span>`;button.onclick=()=>setReadingStatus(a,status);actionBar.append(button);};
   if(autoWall?.status!=="read")addAction(autoWall?.kind==="youtube"?"Archiver":"Marquer comme lu",'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 12 4 4L17 6M11 12l4 4L22 8"/></svg>',"read");
   if(autoWall?.status!=="later")addAction("Enregistrer pour plus tard",'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.75h12v17l-6-4-6 4z"/></svg>',"later");
-  const like=document.createElement("button");like.type="button";like.className="article-action like-action";like.dataset.likeUrl=MMP.normalizeContentUrl(a.canonicalUrl);like.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3Zm0 0 5-8a3 3 0 0 1 2 3l-1 5h6a3 3 0 0 1 3 3l-2 7a3 3 0 0 1-3 2H7"/></svg>';
+  const like=document.createElement("button");like.type="button";like.className="article-action like-action";like.dataset.likeUrl=MMP.normalizeContentUrl(a.canonicalUrl);like.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3Zm0 0 5-8a3 3 0 0 1 2 3l-1 5h6a3 3 0 0 1 3 3l-2 7a3 3 0 0 1-3 2H7"/></svg><span class="article-action-label">J’aime</span>';
   const paintLike=liked=>{like.classList.toggle("is-liked",liked);like.setAttribute("aria-pressed",String(liked));like.title=liked?"Retirer le J’aime":"J’aime";like.setAttribute("aria-label",`${liked?"Retirer le J’aime":"J’aime"} : ${a.title}`);a.liked=liked;};paintLike(!!a.liked);
   like.onclick=async()=>{like.disabled=true;try{const result=await browser.runtime.sendMessage({type:"toggleLike",article:a});paintLike(!!result?.liked);}catch(error){text($("#status"),`Erreur : ${error.message}`);}finally{like.disabled=false;}};actionBar.append(like);
   article.append(actionBar);
@@ -500,6 +502,7 @@ function card(a) {
   article.stopActiveVideo=()=>{if(!loadedPlayer&&!loadedHls&&!loadedDash)return;loadedHls?.destroy();loadedHls=null;loadedDash?.reset();loadedDash=null;loadedPlayer?.pause?.();loadedPlayer?.removeAttribute("src");if(loadedPlayer)loadedPlayer.src="about:blank";loadedPlayer?.remove();loadedPlayer=null;const restart=document.createElement("button");restart.type="button";restart.className="video-start";restart.textContent="▶ Relancer la vidéo";restart.onclick=mountVideo;videoBox.replaceChildren(restart);};
   const showResult=(result,token,autoStartVideo=false)=>{
     if(token!==generation||!expanded||!article.isConnected) return;
+    status.classList.remove("is-loading","linkedin-loading");
     status.hidden=false; content.replaceChildren(); original.hidden=true;
     if(cinemaArticle(a)&&result?.cinema&&hasCinemaMatch(result.cinema)){
       const cinema=result?.cinema;
@@ -585,17 +588,16 @@ function card(a) {
   };
   const toggleArticle=async()=>{
     expanded=!expanded;
-    for(const control of [toggle,topCollapse]){
-      control.setAttribute("aria-expanded",String(expanded));
-      control.setAttribute("aria-label",`${expanded?"Replier":"Développer"} l’article : ${a.title}`);
-    }
-    toggle.textContent="⌄";
-    topCollapse.textContent="↑ Replier";
-    toggle.hidden=expanded;
+    toggle.setAttribute("aria-expanded",String(expanded));
+    toggle.setAttribute("aria-label",`${expanded?"Fermer":"Ouvrir"} l’article : ${a.title}`);
+    topCollapse.setAttribute("aria-expanded",String(expanded));
+    topCollapse.setAttribute("aria-label",`${expanded?"Replier":"Développer"} l’article : ${a.title}`);
+    toggle.classList.toggle("is-expanded",expanded);topCollapse.classList.toggle("is-expanded",expanded);
+    toggle.querySelector(".article-action-label").textContent=expanded?"Fermer":"Ouvrir";
     topCollapse.hidden=!expanded;
     articleBody.hidden=!expanded;
     const token=++generation;
-    if(!expanded) {if(activeSpeechArticleId===a.id)articleSpeech.stop();if(isLinkedInResult(a))browser.runtime.sendMessage({type:"cancelLinkedInResolution",articleId:a.id}).catch(()=>{});speechControls.hidden=true;if(loadedPlayer){loadedPlayer.removeAttribute("src");loadedPlayer.load?.();loadedPlayer=null;}if(videoInfo)videoBox.replaceChildren();if(cover)cover.hidden=false;article.scrollIntoView({block:"start"});return;}
+    if(!expanded) {status.classList.remove("is-loading","linkedin-loading");if(activeSpeechArticleId===a.id)articleSpeech.stop();if(isLinkedInResult(a))browser.runtime.sendMessage({type:"cancelLinkedInResolution",articleId:a.id}).catch(()=>{});speechControls.hidden=true;if(loadedPlayer){loadedPlayer.removeAttribute("src");loadedPlayer.load?.();loadedPlayer=null;}if(videoInfo)videoBox.replaceChildren();if(cover)cover.hidden=false;article.scrollIntoView({block:"start"});return;}
     if(a.videoPlatform==="PeerTube"){status.hidden=false;status.classList.remove("expanded-error");status.textContent="Préparation du lecteur PeerTube…";showPeerTubeVideo(token);return;}
     if(a.videoPlatform==="CrowdBunker"){showCrowdBunkerVideo(token);return;}
     if(a.videoPlatform==="Rumble"){showPublicPlatformVideo(token);return;}
@@ -628,7 +630,7 @@ function card(a) {
     }
     if(a.atUri){
       const full=document.createElement("p");full.className="summary bluesky-full-text";full.textContent=a.summary||a.title;content.replaceChildren(full);renderPersuasionFindings(articleBody,content);
-      status.hidden=false;status.classList.remove("expanded-error");status.textContent="Recherche du lien et récupération de l’article…";
+      status.hidden=false;status.classList.remove("expanded-error");status.classList.add("is-loading");status.textContent="Recherche du lien et récupération de l’article…";
       // Firefox only accepts an optional host permission while handling the
       // user gesture, so request it before the metadata lookup awaits network.
       if(!contentRequest)contentRequest=browser.permissions.request({origins:["<all_urls>"]}).then(granted=>{
@@ -641,6 +643,7 @@ function card(a) {
       });
       contentRequest.then(result=>{
         if(token!==generation||!expanded||!article.isConnected)return;
+        status.classList.remove("is-loading");
         if(result?.noLink){status.textContent="Cette publication ne contient pas de lien externe détectable.";status.classList.remove("expanded-error");original.href=a.canonicalUrl;original.textContent="Ouvrir la publication sur Bluesky ↗";original.hidden=false;contentRequest=null;return;}
         if(result?.error){status.textContent="Le contenu du lien est indisponible : "+result.error;status.classList.add("expanded-error");original.href=result.linkedArticleUrl||a.blueskyLink||a.canonicalUrl;original.textContent=result.linkedArticleUrl||a.blueskyLink?"Ouvrir l’article lié ↗":"Ouvrir la publication sur Bluesky ↗";original.hidden=false;contentRequest=null;return;}
         const heading=document.createElement("h3");heading.className="bluesky-linked-heading";heading.textContent=a.blueskyLinkTitle||(()=>{try{return new URL(a.blueskyLink).hostname;}catch{return"Article lié";}})();
@@ -650,10 +653,10 @@ function card(a) {
         if(!body.textContent.trim()&&result?.text){const paragraph=document.createElement("p");paragraph.textContent=result.text;body.append(paragraph);}
         if(!body.textContent.trim()){status.textContent="Aucun texte exploitable n’a été trouvé dans l’article lié.";status.classList.add("expanded-error");original.href=a.blueskyLink;original.textContent="Ouvrir l’article lié ↗";original.hidden=false;contentRequest=null;return;}
         content.append(heading,link,body,publication);status.hidden=true;status.classList.remove("expanded-error");original.hidden=true;renderPersuasionFindings(articleBody,content);updateSpeechAvailability();
-      }).catch(error=>{if(token!==generation||!expanded)return;status.textContent="Le contenu du lien est indisponible : "+error.message;status.classList.add("expanded-error");if(a.blueskyLink){original.href=a.blueskyLink;original.textContent="Ouvrir l’article lié ↗";original.hidden=false;}contentRequest=null;});
+      }).catch(error=>{if(token!==generation||!expanded)return;status.classList.remove("is-loading");status.textContent="Le contenu du lien est indisponible : "+error.message;status.classList.add("expanded-error");if(a.blueskyLink){original.href=a.blueskyLink;original.textContent="Ouvrir l’article lié ↗";original.hidden=false;}contentRequest=null;});
       return;
     }
-    status.hidden=false; status.classList.remove("expanded-error"); status.textContent=cinemaArticle(a)?"Récupération de la fiche cinéma…":"Récupération du texte de l’article…";
+    status.hidden=false; status.classList.remove("expanded-error"); status.classList.add("is-loading"); status.textContent=cinemaArticle(a)?"Récupération de la fiche cinéma…":"Récupération du texte de l’article…";
     if(!contentRequest){let permission=true;if(cinemaArticle(a)){const origins=["https://www.allocine.fr/*","https://fr.wikipedia.org/*","https://en.wikipedia.org/*"];try{origins.push(`${new URL(a.canonicalUrl).origin}/*`);permission=await browser.permissions.request({origins:[...new Set(origins)]});}catch{permission=false;}}contentRequest=browser.runtime.sendMessage({type:"readArticle",articleId:a.id}).then(result=>{if(!permission&&!result?.cinema)result.cinema={error:"Autorisation d’accès aux bases cinéma refusée dans Firefox."};return result;});}
     contentRequest.then(result=>{showResult(result,token);if(result?.error)contentRequest=null;}).catch(()=>{contentRequest=null;showResult({error:true},token);});
   };
@@ -665,7 +668,9 @@ function card(a) {
       topCollapse.focus({preventScroll:true});
     }catch(error){
       if(!expanded){
-        expanded=true;toggle.hidden=true;topCollapse.hidden=false;articleBody.hidden=false;
+        expanded=true;toggle.hidden=false;topCollapse.hidden=false;articleBody.hidden=false;
+        toggle.classList.add("is-expanded");topCollapse.classList.add("is-expanded");toggle.querySelector(".article-action-label").textContent="Fermer";
+        toggle.setAttribute("aria-label",`Fermer l’article : ${a.title}`);topCollapse.setAttribute("aria-label",`Replier l’article : ${a.title}`);
         toggle.setAttribute("aria-expanded","true");topCollapse.setAttribute("aria-expanded","true");
       }
       status.hidden=false;status.classList.add("expanded-error");

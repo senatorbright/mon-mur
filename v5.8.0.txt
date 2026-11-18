@@ -1,7 +1,22 @@
 # Mon Mur — changelog cumulatif
-Date : 16 novembre 2026
+Date : 18 novembre 2026
 
-Changelog cumulatif de l’extension Firefox Mon Mur. Ce document rassemble l’historique des versions 1.0.0, 2.0.0, 2.1.0, 2.2.0, 2.3.0, 2.4.0, 2.5.0, 2.6.0, 2.7.0, 2.8.0, 2.9.0, 2.10.0, 2.11.0, 2.12.0, 3.0.0, 3.1.0, 3.2.0, 3.3.0, 3.4.0, 3.5.0, 3.6.0, 3.7.0, 3.8.0, 3.9.0, 3.10.0, 3.11.0, 3.12.0, 3.13.0, 3.14.0, 3.15.0, 3.16.0, 3.17.0, 3.18.0, 4.0.0, 4.1.0, 4.2.0, 4.3.0, 4.4.0, 4.5.0, 4.6.0, 4.7.0, 4.8.0, 4.9.0, 4.10.0, 4.11.0, 4.12.0, 5.0.0, 5.1.0, 5.2.0, 5.3.0, 5.4.0, 5.5.0 et 5.6.0; il remplace les changelogs séparés des versions précédentes.
+Changelog cumulatif de l’extension Firefox Mon Mur. Ce document rassemble l’historique des versions 1.0.0, 2.0.0, 2.1.0, 2.2.0, 2.3.0, 2.4.0, 2.5.0, 2.6.0, 2.7.0, 2.8.0, 2.9.0, 2.10.0, 2.11.0, 2.12.0, 3.0.0, 3.1.0, 3.2.0, 3.3.0, 3.4.0, 3.5.0, 3.6.0, 3.7.0, 3.8.0, 3.9.0, 3.10.0, 3.11.0, 3.12.0, 3.13.0, 3.14.0, 3.15.0, 3.16.0, 3.17.0, 3.18.0, 4.0.0, 4.1.0, 4.2.0, 4.3.0, 4.4.0, 4.5.0, 4.6.0, 4.7.0, 4.8.0, 4.9.0, 4.10.0, 4.11.0, 4.12.0, 5.0.0, 5.1.0, 5.2.0, 5.3.0, 5.4.0, 5.5.0, 5.6.0, 5.7.0 et 5.8.0; il remplace les changelogs séparés des versions précédentes.
+
+## Version 5.8.0 — lecture mobile et commandes plus accessibles
+
+- La barre latérale se replie sur les écrans étroits pour donner toute la largeur aux murs et aux pages de l’extension. Un bouton ouvre le menu, un geste depuis le bord gauche le fait apparaître, et un toucher à l’extérieur le referme.
+- Ajout d’un réglage rapide de la taille du texte des cartes et des articles, de 100 à 150 %. Le choix est mémorisé et fonctionne sur ordinateur et smartphone.
+- Refonte responsive des commandes des cartes et des articles : icônes et libellés restent faciles à utiliser au doigt comme au clavier. Un indicateur animé signale la récupération d’un article.
+- Le bouton d’ouverture du mur depuis le panneau de l’extension réutilise un onglet Mon Mur déjà ouvert au lieu d’en créer un nouveau; le panneau s’adapte aussi mieux aux petits écrans.
+
+## Version 5.7.0 — actualisations et compteurs fiabilisés
+
+- Fiabilisation d’IndexedDB après fermeture de la connexion par Firefox; les actualisations récupèrent un état interrompu et traitent les sources séquentiellement pour éviter qu’une erreur ou une charge simultanée ne bloque la suite.
+- Amélioration de la lecture des dates de publication avec heure et fuseau horaire, notamment pour les flux exprimant l’heure chinoise; une date déjà enregistrée au jour près est enrichie quand une heure exacte devient disponible.
+- Regroupement générique des articles dont l’URL canonique varie uniquement par sa forme normalisée, par exemple une barre oblique finale; les variantes existantes ne produisent plus de cartes en double.
+- Alignement du compteur « Murs » de la barre latérale sur les articles dédupliqués, leur état de lecture et la durée de conservation propre à chaque mur.
+
 
 ## Version 5.6.0 — préférences fiabilisées et préparation du partage
 

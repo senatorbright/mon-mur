@@ -5,13 +5,32 @@ function permissionOriginPattern(url) { const u=new URL(url); return `${u.protoc
 function domainPermission(url) { return globalSiteAccess ? Promise.resolve(true) : browser.permissions.request({origins:[permissionOriginPattern(url)]}); }
 function friendlyError(error){const original=String(error||"Erreur inconnue"),s=original.toLowerCase();if(/^permission refused$/.test(s)||/^autorisation du site refusée\.?$/.test(s))return"Firefox n’a pas accordé l’accès à cette page.";if(/certificate|certificat|ssl|tls|cert_common_name_invalid|sec_error|err_cert/.test(s))return"Connexion sécurisée impossible. Le certificat du site présente un problème.";if(/dns|network|failed to fetch|inaccessible|timeout|timed out|http 4\d\d|http 5\d\d/.test(s))return"Impossible de contacter ce site. Vérifiez son adresse ou réessayez plus tard.";if(/no usable|no articles/.test(s))return"Aucune fiche exploitable n'a pu être trouvée sur ce site.";return`La vérification a échoué : ${original.slice(0,400)}`;}
 function showError(error,diagnostic=""){console.error("Échec de l'ajout ou de la validation de source",error,{globalSiteAccess,tabUrl:tab?.url,diagnostic});msg(`${friendlyError(error)}${diagnostic?` [${diagnostic}; accès global vu par le panneau : ${globalSiteAccess?"oui":"non"}]`:""}`,true);}
+async function openWall() {
+  const button=$("#openWall"), wallUrl=browser.runtime.getURL("wall.html"), target=new URL(wallUrl);
+  button.disabled=true;
+  button.textContent="Ouverture…";
+  try {
+    const tabs=await browser.tabs.query({});
+    const existing=tabs.find(candidate=>{
+      try { const url=new URL(candidate.url); return url.origin===target.origin&&url.pathname===target.pathname; }
+      catch { return false; }
+    });
+    if(existing) await browser.tabs.update(existing.id,{active:true});
+    else await browser.tabs.create({url:wallUrl,active:true});
+    window.close();
+  } catch(error) {
+    button.disabled=false;
+    button.textContent="Ouvrir Mon Mur";
+    msg(`Impossible d’ouvrir Mon Mur : ${error.message||error}`,true);
+  }
+}
 async function init() {
   globalSiteAccess=await browser.permissions.contains({origins:["<all_urls>"]});
   extensionState=await browser.runtime.sendMessage({type:"state"});
   $("#openWall").textContent="Ouvrir Mon Mur";
   // L’ouverture du mur doit fonctionner quelle que soit la page active,
   // y compris about:newtab ou une page interne de Firefox.
-  $("#openWall").onclick=()=>browser.tabs.create({url:browser.runtime.getURL("wall.html")});
+  $("#openWall").onclick=openWall;
   [tab] = await browser.tabs.query({active:true,currentWindow:true});
   if (!tab?.url || !/^https?:/.test(tab.url)) { $("#activeUrl").textContent="Cette page ne peut pas être suivie."; return; }
   $("#activeUrl").textContent=tab.url; $("#follow").disabled=false;

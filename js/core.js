@@ -341,7 +341,7 @@ const MMP = (() => {
       const desc = decodeHtmlEntities(["description","summary","content:encoded","content","turbo:content"].map(name=>text(q(name))).find(value=>value.trim())||"");
       const fullContent = includeContent ? feedContent(node) : "";
       const dateText = text(q("pubDate") || q("published") || q("updated") || q("date"));
-      const date = Date.parse(dateText);
+      const date = publicationDate(dateText, feedUrl);
       const cats = [...node.getElementsByTagName("category")].map(x => x.getAttribute("term") || text(x)).filter(Boolean);
       const looksLikeImage = value => /\.(?:avif|gif|jpe?g|png|webp)(?:$|[?#])/i.test(String(value||""));
       const mediaNodes=[...node.getElementsByTagNameNS("*","thumbnail"),...node.getElementsByTagNameNS("*","content"),...node.getElementsByTagName("thumbnail")];
@@ -371,7 +371,7 @@ const MMP = (() => {
       // A news summary can mention a film or series without being a cinema
       // listing. Use feed-level and category labels as signals instead.
       const cinemaHint=isCinemaSignal([feedDescriptor,...cats].join(" "));
-      return { id: stableId(guid && guid.length > 4 ? `${source.id}:${guid}` : canonicalUrl), sourceId: source.id, canonicalUrl, title: decodeHtmlEntities(title), summary, feedContentHtml: fullContent, image: img ? cleanUrl(img, feedUrl) : "", author: author.trim(), categories: [...new Set(cats)], cinemaHint, publishedAt: Number.isFinite(date) ? date : Date.now(), dateIsFallback: !Number.isFinite(date), discoveredAt: Date.now(), fetchedAt: Date.now() };
+      return { id: stableId(guid && guid.length > 4 ? `${source.id}:${guid}` : canonicalUrl), sourceId: source.id, canonicalUrl, title: decodeHtmlEntities(title), summary, feedContentHtml: fullContent, image: img ? cleanUrl(img, feedUrl) : "", author: author.trim(), categories: [...new Set(cats)], cinemaHint, publishedAt: Number.isFinite(date) ? date : Date.now(), dateIsFallback: !Number.isFinite(date), datePrecision: Number.isFinite(date) ? publicationDatePrecision(dateText) : "unknown", discoveredAt: Date.now(), fetchedAt: Date.now() };
     }).filter(Boolean);
   }
   function parseJsonFeed(json, feedUrl, source, includeContent = false) {
@@ -434,6 +434,25 @@ const MMP = (() => {
     if (!month || day < 1 || day > 31) return NaN;
     const timestamp = Date.UTC(year, month - 1, day), date = new Date(timestamp);
     return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day ? timestamp : NaN;
+  }
+  function publicationDate(value, pageUrl = "") {
+    const input = String(value || "").trim();
+    const match = input.match(/^(\d{4})-(\d{2})-(\d{2})[ T]\s*(?:à\s*)?(\d{1,2}):(\d{2})(?::(\d{2}))?$/i);
+    if (match) {
+      const [, year, month, day, hour, minute, second = "0"] = match;
+      const [y, m, d, h, min, sec] = [year, month, day, hour, minute, second].map(Number);
+      const check = new Date(Date.UTC(y, m - 1, d));
+      if (check.getUTCFullYear() !== y || check.getUTCMonth() !== m - 1 || check.getUTCDate() !== d || h > 23 || min > 59 || sec > 59) return NaN;
+      let host = "";
+      try { host = new URL(pageUrl).hostname.toLowerCase(); } catch {}
+      const isXinhua = /(^|\.)news\.cn$/.test(host) || /(^|\.)xinhuanet\.com$/.test(host);
+      return Date.parse(`${year}-${month}-${day}T${hour.padStart(2, "0")}:${minute}:${String(sec).padStart(2, "0")}${isXinhua ? "+08:00" : ""}`);
+    }
+    const textualDate = publicationDateFromText(input);
+    return Number.isFinite(textualDate) ? textualDate : Date.parse(input);
+  }
+  function publicationDatePrecision(value) {
+    return /\d{1,2}:\d{2}/.test(String(value || "")) ? "instant" : "day";
   }
   const HTML_PROFILE_VERSION = 1;
   function profileSelector(node, within) {
@@ -586,7 +605,7 @@ const MMP = (() => {
         if (urls.length !== 1 || title.length < 5 || title.length > 240) continue;
         const dateNode = profile.dateSelector ? item.querySelector(profile.dateSelector) : null;
         const dateText = dateNode?.getAttribute("datetime") || dateNode?.getAttribute("content") || dateNode?.getAttribute("data-date") || text(dateNode);
-        const textualDate = publicationDateFromText(dateText), parsedDate = Number.isFinite(textualDate) ? textualDate : Date.parse(dateText);
+        const parsedDate = publicationDate(dateText, pageUrl);
         const summaryNode = profile.descriptionSelector ? item.querySelector(profile.descriptionSelector) : null;
         const imageNode = profile.imageSelector ? item.querySelector(profile.imageSelector) : null;
         const summary = text(summaryNode).replace(/\s+/g, " ").trim().slice(0, 1200);
@@ -598,7 +617,7 @@ const MMP = (() => {
         articles.push({
           id: stableId(urls[0]), sourceId: source.id, sourceOrder: articles.length, sourceOrderSourceId: source.id,
           canonicalUrl: urls[0], title, summary, image, author: text(authorNode).trim(), categories, cinemaHint: false, cinemaMetadata: "", event: null,
-          publishedAt, dateIsFallback: !Number.isFinite(parsedDate), datePrecision: Number.isFinite(parsedDate) ? (/^\d{4}-\d\d-\d\d(?:$|T)/.test(dateText) ? (dateText.includes("T") ? "instant" : "day") : "day") : Number.isFinite(urlDate) ? "day" : "unknown",
+          publishedAt, dateIsFallback: !Number.isFinite(parsedDate), datePrecision: Number.isFinite(parsedDate) ? publicationDatePrecision(dateText) : Number.isFinite(urlDate) ? "day" : "unknown",
           discoveredAt: Date.now(), fetchedAt: Date.now()
         });
       } catch {}
@@ -740,12 +759,12 @@ const MMP = (() => {
       if (cardText.length < 20 || cardText.length > 3000) continue;
       const dateNode = card.querySelector(dateSelector);
       const dateText = dateNode?.getAttribute("datetime") || dateNode?.getAttribute("content") || dateNode?.getAttribute("data-date") || text(dateNode);
-      const textualDate = publicationDateFromText(dateText), date = Number.isFinite(textualDate) ? textualDate : Date.parse(dateText);
+      const date = publicationDate(dateText, pageUrl);
       const image = card.querySelector("img[src], img[data-src], img[data-original]");
       const summaryNode = card.querySelector("[itemprop='description'], [class*='excerpt' i], [class*='summary' i], p");
       const summary = text(summaryNode).replace(/\s+/g, " ").trim().slice(0, 1200);
       if (!Number.isFinite(date) && !summary && !image) continue;
-      mergeListingCandidate({ url, title, summary, image: cleanUrl(image?.getAttribute("data-src") || image?.getAttribute("data-original") || image?.getAttribute("src"), pageUrl), date: Number.isFinite(date) ? date : NaN, datePrecision: Number.isFinite(date) ? (/^\d{4}-\d\d-\d\d(?:$|T)/.test(dateText) ? (dateText.includes("T") ? "instant" : "day") : "day") : "unknown", categories: [] });
+      mergeListingCandidate({ url, title, summary, image: cleanUrl(image?.getAttribute("data-src") || image?.getAttribute("data-original") || image?.getAttribute("src"), pageUrl), date: Number.isFinite(date) ? date : NaN, datePrecision: Number.isFinite(date) ? publicationDatePrecision(dateText) : "unknown", categories: [] });
     }
     const dateLead = /^(?:\d{1,2}\s*)?(?:janv(?:ier)?|févr(?:ier)?|mars|avr(?:il)?|mai|juin|juil(?:let)?|août|sept(?:embre)?|oct(?:obre)?|nov(?:embre)?|déc(?:embre)?)[.]?\s*(?:\d{1,2}\s*(?:janv|févr|mars|avr|mai|juin|juil|août|sept|oct|nov|déc)[.]?)?\s*/i;
     const eventDetails = anchor => {

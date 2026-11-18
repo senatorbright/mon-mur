@@ -1,10 +1,20 @@
 # Construction et revue AMO
 
+## Préparation 5.8.0 — 18 novembre 2026
+
+Le manifeste cible `5.8.0`. Cette version améliore la lecture mobile et l’accessibilité des commandes : barre latérale repliable, réglage mémorisé de la taille du texte, commandes d’article adaptées aux écrans tactiles, indicateur de chargement et réutilisation de l’onglet Mon Mur depuis le panneau de l’extension.
+
+La suite automatisée passe avec 284 tests réussis et aucun échec. `web-ext lint` rapporte 0 erreur, 0 notice et 16 avertissements (affectations `innerHTML`, scripts de construction et fichiers HTML de test). `./scripts/build-release.sh` produit `web-ext-artifacts/mon-mur-5.8.0.zip` et `web-ext-artifacts/mon-mur-5.8.0.xpi`; le ZIP est valide, le manifeste de l’archive indique 5.8.0 et le XPI correspond au ZIP. Le XPI est non signé. Les essais manuels dans Firefox restent nécessaires avant diffusion.
+
+## Préparation 5.7.0 — 17 novembre 2026
+
+Le manifeste cible `5.7.0`. Cette version fiabilise les connexions IndexedDB et les actualisations séquentielles, améliore l’interprétation des dates avec heure et fuseau horaire, regroupe les variantes d’URL canoniques qui dupliquaient des cartes et aligne le compteur global des murs sur les articles réellement consultables. Le changelog cumulatif et ses références sont actualisés. La suite de tests, les contrôles de paquet, la construction des archives et les essais manuels Firefox restent à effectuer; aucun résultat de validation 5.7.0 n’est déclaré.
+
 ## Préparation 5.6.0 — 16 novembre 2026
 
 Le manifeste cible `5.6.0`. La version corrige l’état du filtre linguistique lorsque d’anciennes valeurs étaient conservées au niveau d’un mur, et fiabilise la confirmation visuelle de l’activation des techniques de persuasion. Les références de version, le changelog cumulatif et les instructions de test/construction sont actualisés.
 
-Le dépôt GitHub public `senatorbright/mon-mur` est sous GPL v3. Les cinq icônes de plateforme sans provenance fiable et l’ancienne icône Mon Mur ont été remplacées par des pictogrammes originaux distribués sous GPLv3; le pictogramme Rumble sous CC0 est conservé.
+Le dépôt GitHub public `senatorbright/mon-mur` est sous GPL v3. Les cinq icônes de plateforme sans provenance fiable ont été remplacées par des pictogrammes originaux distribués sous GPLv3; le pictogramme Rumble sous CC0 est conservé. Le logo bleu original de Mon Mur, créé par l’auteur du projet, est restauré.
 
 La suite automatisée passe avec 284 tests réussis et aucun échec. `web-ext lint` sur le contenu exact du paquet rapporte 0 erreur, 0 notice et 9 avertissements (affectations `innerHTML` et constructeur `Function` dans les bibliothèques); ils restent à examiner. `./scripts/build-release.sh` produit `web-ext-artifacts/mon-mur-5.6.0.zip` et `web-ext-artifacts/mon-mur-5.6.0.xpi`; les deux archives ont été contrôlées comme ZIP valides et leur contenu correspond entre le dossier de développement et le clone GitHub. Le XPI est non signé; il ne s’agit ni d’une signature Mozilla ni d’une soumission AMO. Les tests manuels Firefox restent nécessaires.
 

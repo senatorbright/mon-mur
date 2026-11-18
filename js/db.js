@@ -1,10 +1,26 @@
 "use strict";
 const MMPDB = (() => {
   const NAME = "mon-mur-presse", VERSION = 8;
-  let opening;
+  let opening, connection;
+  function forgetConnection(db) {
+    if (connection !== db) return;
+    connection = null;
+    opening = null;
+  }
   function open() {
+    if (connection) {
+      // Firefox can close an IndexedDB connection while the extension is
+      // suspended. The resolved `opening` promise used to keep handing that
+      // closed connection back to every later operation.
+      try {
+        connection.transaction("sourceSync", "readonly");
+        return Promise.resolve(connection);
+      } catch {
+        forgetConnection(connection);
+      }
+    }
     if (opening) return opening;
-    opening = new Promise((resolve, reject) => {
+    const pending = new Promise((resolve, reject) => {
       const req = indexedDB.open(NAME, VERSION);
       req.onupgradeneeded = event => {
         const db = req.result, upgradeTx = event.target.transaction;
@@ -28,10 +44,21 @@ const MMPDB = (() => {
         if (!db.objectStoreNames.contains("sourceSync")) db.createObjectStore("sourceSync", { keyPath: "sourceId" });
         if (!db.objectStoreNames.contains("expiredArticles")) db.createObjectStore("expiredArticles", { keyPath: "canonicalUrl" });
       };
-      req.onsuccess = () => resolve(req.result);
+      req.onsuccess = () => {
+        const db = req.result;
+        connection = db;
+        db.onclose = () => forgetConnection(db);
+        db.onversionchange = () => {
+          db.close();
+          forgetConnection(db);
+        };
+        resolve(db);
+      };
       req.onerror = () => reject(req.error);
     });
-    return opening;
+    opening = pending;
+    pending.catch(() => { if (opening === pending) opening = null; });
+    return pending;
   }
   async function transaction(store, mode, action) {
     const db = await open();
@@ -152,6 +179,7 @@ const MMPDB = (() => {
               old.sourceIds = [...new Set([...(old.sourceIds || [old.sourceId]), incoming.sourceId])];
               if (incoming.title && incoming.title.length < old.title.length) old.title = incoming.title;
               if (old.dateIsFallback && !incoming.dateIsFallback) { old.publishedAt = incoming.publishedAt; old.dateIsFallback = false; }
+              else if (!incoming.dateIsFallback && incoming.datePrecision === "instant" && old.datePrecision === "day") { old.publishedAt = incoming.publishedAt; old.datePrecision = "instant"; }
               if (incoming.dateIsFallback && old.dateIsFallback) old.publishedAt = old.discoveredAt || old.publishedAt;
               if (incoming.replaceImage) { old.image = incoming.image || ""; delete old.readerImage; delete old.imageQualityCheckImage; delete old.imageQualityCheckedAt; }
               else if (incoming.feedImageFallbackUrl && old.image === incoming.feedImageFallbackUrl) old.image = incoming.image || "";
