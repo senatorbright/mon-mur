@@ -28,7 +28,15 @@ Dans Firefox Nightly, ouvrez `about:config`, réglez `xpinstall.signatures.requi
 
 ### Firefox Nightly sur Android
 
-Firefox Android peut installer un XPI depuis un fichier, mais Mozilla exige que ce fichier soit signé. Le XPI non signé 5.8.0 ne s’installe donc pas directement sur téléphone. Pour une future version signée : téléchargez le XPI sur le téléphone, ouvrez **Paramètres → À propos de Firefox Nightly**, touchez cinq fois le logo, puis **Paramètres → Installer une extension depuis un fichier** et sélectionnez le XPI signé. Pour tester la version non signée dès maintenant, utilisez le chargement temporaire par ADB décrit dans [TESTER-ANDROID.fr.md](TESTER-ANDROID.fr.md).
+Le XPI non signé peut être installé dans Nightly Android après désactivation de la vérification des signatures. Cette option avancée réduit la protection contre les extensions modifiées : utilisez uniquement un XPI provenant de la release officielle.
+
+1. Téléchargez `mon-mur-5.8.0.xpi` sur le téléphone.
+2. Dans Nightly, ouvrez `about:config`. Si cette page n’est pas disponible, ouvrez `chrome://geckoview/content/config.xhtml`.
+3. Recherchez `xpinstall.signatures.required` et réglez la préférence booléenne sur `false`.
+4. Ouvrez **Paramètres → À propos de Firefox Nightly** et touchez cinq fois le logo pour activer le menu de débogage.
+5. Revenez dans **Paramètres → Installer une extension depuis un fichier**, sélectionnez le XPI téléchargé et confirmez.
+
+La préférence peut rester désactivée pour que l’extension non signée fonctionne. Pour supprimer Mon Mur, utilisez **Extensions**, puis remettez `xpinstall.signatures.required` à `true`.
 
 ## Construire les archives locales
 
@@ -50,4 +58,4 @@ Le partage collectif des J’aime avec un mur automatique commun est une idée �
 
 ## État de la version 5.8.0
 
-La version 5.8.0 est publiée en préversion. Les 284 tests automatisés passent. `web-ext lint` rapporte 0 erreur, 0 notice et 16 avertissements à examiner. Les archives ZIP et XPI non signé 5.8.0 sont construites et contrôlées; les essais manuels Firefox restent nécessaires. Pour Android, une installation permanente nécessitera un XPI signé par Mozilla. Consulter [BUILD-AND-REVIEW.fr.md](amo/BUILD-AND-REVIEW.fr.md) pour l’état des contrôles.
+La version 5.8.0 est publiée en préversion. Les 284 tests automatisés passent. `web-ext lint` rapporte 0 erreur, 0 notice et 16 avertissements à examiner. Les archives ZIP et XPI non signé 5.8.0 sont construites et contrôlées; les essais manuels Firefox restent nécessaires. Sur Firefox Nightly Android, le XPI peut être installé depuis un fichier après désactivation de `xpinstall.signatures.required`; la procédure et la précaution associée sont décrites ci-dessus. Consulter [BUILD-AND-REVIEW.fr.md](amo/BUILD-AND-REVIEW.fr.md) pour l’état des contrôles.

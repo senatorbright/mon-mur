@@ -9,7 +9,7 @@ Changelog cumulatif de l’extension Firefox Mon Mur. Ce document rassemble l’
 - Ajout d’un réglage rapide de la taille du texte des cartes et des articles, de 100 à 150 %. Le choix est mémorisé et fonctionne sur ordinateur et smartphone.
 - Refonte responsive des commandes des cartes et des articles : icônes et libellés restent faciles à utiliser au doigt comme au clavier. Un indicateur animé signale la récupération d’un article.
 - Le bouton d’ouverture du mur depuis le panneau de l’extension réutilise un onglet Mon Mur déjà ouvert au lieu d’en créer un nouveau; le panneau s’adapte aussi mieux aux petits écrans.
-- Le XPI joint à la préversion GitHub est non signé : Firefox Nightly de bureau peut le charger après désactivation de la vérification de signature; une installation depuis un fichier sur Android demande un XPI signé par Mozilla. Le test Android non signé reste possible par chargement temporaire avec ADB.
+- Le XPI joint à la préversion GitHub est non signé. Firefox Nightly de bureau peut l’installer après désactivation de la vérification de signature; sur Android, le réglage `xpinstall.signatures.required` peut également être désactivé dans la configuration de Nightly avant d’utiliser **Installer une extension depuis un fichier**. Cette option avancée réduit la protection contre les extensions modifiées; le guide de partage précise les étapes.
 
 ## Version 5.7.0 — actualisations et compteurs fiabilisés
 

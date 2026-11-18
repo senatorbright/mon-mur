@@ -30,7 +30,15 @@ Cette option concerne Nightly sur ordinateur. Remettez la préférence à `true`
 
 ### Sur smartphone Android avec Firefox Nightly
 
-Firefox Nightly Android propose l’installation d’une extension depuis un fichier, mais ce mode exige un XPI signé par Mozilla. Le XPI non signé joint à la version 5.8.0 ne peut donc pas être installé directement sur Android. Une fois un XPI signé disponible, téléchargez-le sur le téléphone, ouvrez **Paramètres → À propos de Firefox Nightly**, touchez le logo Firefox Nightly cinq fois, puis revenez dans **Paramètres → Installer une extension depuis un fichier**. Sélectionnez le XPI signé et confirmez l’installation.
+Le XPI non signé de cette release peut être installé dans Firefox Nightly Android en désactivant la vérification des signatures. Ce réglage réduit la protection contre les extensions modifiées : installez uniquement le fichier téléchargé depuis la release officielle Mon Mur.
+
+1. Téléchargez `mon-mur-5.8.0.xpi` sur le téléphone.
+2. Dans Firefox Nightly, ouvrez `about:config`. Si cette adresse n’est pas disponible, ouvrez `chrome://geckoview/content/config.xhtml`.
+3. Recherchez `xpinstall.signatures.required` et réglez cette préférence booléenne sur `false`.
+4. Ouvrez **Paramètres → À propos de Firefox Nightly**, puis touchez le logo Firefox Nightly cinq fois pour activer le menu de débogage.
+5. Revenez dans **Paramètres → Installer une extension depuis un fichier**, choisissez le XPI téléchargé et confirmez.
+
+Ce réglage est propre au profil Nightly. Réactivez la vérification (`true`) après avoir retiré l’extension non signée. Mozilla décrit la procédure d’installation depuis un fichier dans son [guide de distribution](https://extensionworkshop.com/documentation/publish/install-self-distributed/); l’installation non signée est une option avancée de Nightly, distincte du parcours avec XPI signé.
 
 Pour tester dès maintenant le code non signé sur un téléphone, utilisez la méthode développeur temporaire avec ADB décrite dans [Tester Mon Mur sur un téléphone Android](docs/TESTER-ANDROID.fr.md). Mozilla documente les exigences de signature et ces étapes d’installation dans son [guide de distribution des extensions](https://extensionworkshop.com/documentation/publish/install-self-distributed/).
 
