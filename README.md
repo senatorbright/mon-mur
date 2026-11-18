@@ -16,6 +16,24 @@ Extension Firefox expérimentale, réalisée par « vibe coding ». Mon Mur fonc
 
 Le mur s’ouvre depuis le panneau. Pour utiliser cette copie, rechargez l’extension temporaire en sélectionnant `manifest.json` dans `about:debugging`. Firefox conserve normalement le stockage local associé à l’identifiant défini dans le manifeste; les nouvelles structures sont migrées au premier démarrage. Les pages **Sources**, **J’aime** et **Préférences** sont accessibles dans sa barre de navigation. Les Préférences sont réparties entre **Murs**, **Filtres sémantiques**, **Filtres intelligents** et **Données et accès**; ce dernier onglet présente l’état des autorisations, la fraîcheur et le nombre d’URL mémorisées, l’export CSV et les sauvegardes JSON. La page **J’aime** permet de retrouver les contenus recommandés, de filtrer et trier la liste, et de régler le nombre d’entrées par page. Dans **Préférences → Données et accès**, vous pouvez autoriser tous les sites en une seule fois; sinon Firefox demandera un accès par domaine. Une URL de page ou de flux peut aussi être saisie dans Sources.
 
+## Installer la version publiée
+
+Téléchargez les fichiers depuis la [release GitHub](https://github.com/senatorbright/mon-mur/releases). Le paquet XPI de la version 5.8.0 est non signé.
+
+### Sur ordinateur avec Firefox Nightly
+
+1. Dans Firefox Nightly, ouvrez `about:config` et réglez `xpinstall.signatures.required` sur `false`.
+2. Ouvrez `about:addons`, puis le menu engrenage et **Installer un module depuis un fichier…**.
+3. Choisissez le fichier `mon-mur-5.8.0.xpi` téléchargé et confirmez.
+
+Cette option concerne Nightly sur ordinateur. Remettez la préférence à `true` après l’essai si vous souhaitez réactiver la vérification des signatures.
+
+### Sur smartphone Android avec Firefox Nightly
+
+Firefox Nightly Android propose l’installation d’une extension depuis un fichier, mais ce mode exige un XPI signé par Mozilla. Le XPI non signé joint à la version 5.8.0 ne peut donc pas être installé directement sur Android. Une fois un XPI signé disponible, téléchargez-le sur le téléphone, ouvrez **Paramètres → À propos de Firefox Nightly**, touchez le logo Firefox Nightly cinq fois, puis revenez dans **Paramètres → Installer une extension depuis un fichier**. Sélectionnez le XPI signé et confirmez l’installation.
+
+Pour tester dès maintenant le code non signé sur un téléphone, utilisez la méthode développeur temporaire avec ADB décrite dans [Tester Mon Mur sur un téléphone Android](docs/TESTER-ANDROID.fr.md). Mozilla documente les exigences de signature et ces étapes d’installation dans son [guide de distribution des extensions](https://extensionworkshop.com/documentation/publish/install-self-distributed/).
+
 Dans l’espace **Découverte**, lancez une recherche DuckDuckGo manuelle par mots-clés ou sujet prioritaire. Les nouveaux flux RSS/Atom vérifiés sont gardés dans la liste **À examiner** entre les recherches et les redémarrages. **Visiter** ouvre le site sans modifier son état; **Marquer comme traitée** mémorise durablement la décision. L’ajout d’une source à un mur la marque aussi comme traitée. La section **Sources traitées** conserve l’historique et permet de rendre un site éligible à une recherche ultérieure. Les doublons sont regroupés par domaine éditorial, en assimilant `www.exemple.fr` et `exemple.fr` tout en gardant les sous-domaines distincts. Firefox demande l’accès à DuckDuckGo et aux domaines qui doivent être vérifiés. Les recherches sont manuelles et locales au navigateur. Les sources traitées et découvertes en attente sont incluses dans les sauvegardes JSON v9; les refus des anciennes sauvegardes sont importés comme sources traitées.
 
 ## Multi-murs

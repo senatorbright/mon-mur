@@ -18,6 +18,18 @@ Après une modification, cliquer sur **Recharger** dans `about:debugging` pour c
 
 Les autorisations de sites sont accordées par Firefox. Sans accès global, l’extension demande l’accès aux domaines nécessaires au fil des actions. Les recherches facultatives transmises à des services tiers et leur consentement sont décrits dans **Préférences → Données et accès**.
 
+## Installer une release
+
+Les releases et leurs fichiers sont publiés sur [GitHub](https://github.com/senatorbright/mon-mur/releases). Le XPI 5.8.0 est non signé.
+
+### Firefox Nightly sur ordinateur
+
+Dans Firefox Nightly, ouvrez `about:config`, réglez `xpinstall.signatures.required` sur `false`, puis ouvrez `about:addons`. Dans le menu engrenage, choisissez **Installer un module depuis un fichier…**, sélectionnez le XPI téléchargé et confirmez. Cette préférence concerne le navigateur de bureau.
+
+### Firefox Nightly sur Android
+
+Firefox Android peut installer un XPI depuis un fichier, mais Mozilla exige que ce fichier soit signé. Le XPI non signé 5.8.0 ne s’installe donc pas directement sur téléphone. Pour une future version signée : téléchargez le XPI sur le téléphone, ouvrez **Paramètres → À propos de Firefox Nightly**, touchez cinq fois le logo, puis **Paramètres → Installer une extension depuis un fichier** et sélectionnez le XPI signé. Pour tester la version non signée dès maintenant, utilisez le chargement temporaire par ADB décrit dans [TESTER-ANDROID.fr.md](TESTER-ANDROID.fr.md).
+
 ## Construire les archives locales
 
 Depuis la racine du dépôt Mon Mur, avec Bash, Node.js, npm et `zip` installés :
@@ -38,4 +50,4 @@ Le partage collectif des J’aime avec un mur automatique commun est une idée �
 
 ## État de la version 5.8.0
 
-La version 5.8.0 est préparée dans les sources. Les 284 tests automatisés passent. `web-ext lint` rapporte 0 erreur, 0 notice et 16 avertissements à examiner. Les archives ZIP et XPI non signé 5.8.0 sont construites et contrôlées; les essais manuels Firefox restent nécessaires avant diffusion. Consulter [BUILD-AND-REVIEW.fr.md](amo/BUILD-AND-REVIEW.fr.md) pour l’état des contrôles.
+La version 5.8.0 est publiée en préversion. Les 284 tests automatisés passent. `web-ext lint` rapporte 0 erreur, 0 notice et 16 avertissements à examiner. Les archives ZIP et XPI non signé 5.8.0 sont construites et contrôlées; les essais manuels Firefox restent nécessaires. Pour Android, une installation permanente nécessitera un XPI signé par Mozilla. Consulter [BUILD-AND-REVIEW.fr.md](amo/BUILD-AND-REVIEW.fr.md) pour l’état des contrôles.
