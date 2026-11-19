@@ -20,6 +20,9 @@ const LINKEDIN_SOURCE_ID = "linkedin-keyword-search";
 const CROWDBUNKER_SOURCE_ID = "crowdbunker-keyword-search";
 const RUMBLE_SOURCE_ID = "rumble-keyword-search";
 const INTERNET_ARCHIVE_SOURCE_PREFIX = "internet-archive:";
+const AUTOMATIC_SOCIAL_SNAPSHOT_KEY = "automaticSocialArticleSnapshots";
+const SOCIAL_REFRESH_BASELINE_VERSION = 1;
+const AUTOMATIC_SOCIAL_SOURCE_IDS = new Set([BLUESKY_SOURCE_ID, LINKEDIN_SOURCE_ID]);
 let blueskyRefreshController = null, linkedinRefreshController = null, videoRefreshController = null, archiveSearchController = null;
 // Observe only tabs explicitly opened for a LinkedIn RSS card, and only briefly.
 const pendingLinkedInTabs = new Map();
@@ -145,7 +148,7 @@ browser.webRequest.onBeforeSendHeaders.addListener(details => {
 }, ["blocking", "requestHeaders"]);
 function wallId(name) { return `wall-${MMP.stableId(name + "-" + Date.now() + "-" + Math.random())}`; }
 const defaultWallSettings = () => ({ excludedKeywords: [], excludedCategories: [], priorities: [], mode: "chronological", type: "auto", retentionDays: 3, faceFilterEnabled: false });
-const GLOBAL_SETTING_KEYS = ["excludedKeywords", "excludedCategories", "priorities", "faceFilterMode", "faceDetectionThreshold", "affiliateModuleEnabled", "affiliateWarningsEnabled", "hideAffiliatedContent", "speechLanguage", "speechVoiceURI", "languageFilterEnabled", "languageFilterLanguages", "languageFilterKeepUnknown", "archiveRetentionDays", "laterRetentionDays", "retentionSplitVersion"];
+const GLOBAL_SETTING_KEYS = ["excludedKeywords", "excludedCategories", "priorities", "faceFilterMode", "faceDetectionThreshold", "affiliateModuleEnabled", "affiliateWarningsEnabled", "hideAffiliatedContent", "speechLanguage", "speechVoiceURI", "languageFilterEnabled", "languageFilterLanguages", "languageFilterKeepUnknown", "translationTargetLanguage", "translationEnabled", "archiveRetentionDays", "laterRetentionDays", "retentionSplitVersion"];
 function settingsForWall(settings, wallSettings) { const combined = { ...settings, ...wallSettings }; for (const key of GLOBAL_SETTING_KEYS) combined[key] = settings[key]; return combined; }
 function wallCinemaEnabled(wall, config) { return config?.type === "cinema"; }
 function articleCinemaEnabled(wall, article, config) { return wallCinemaEnabled(wall, config); }
@@ -158,6 +161,8 @@ async function state() {
   settings.persuasionDetectionEnabled = smartDetectionEnabled;
   settings.clickbaitDetectionEnabled = smartDetectionEnabled;
   settings.languageFilterEnabled = settings.languageFilterEnabled === true;
+  settings.translationEnabled = settings.translationEnabled === true;
+  if (!["fr", "en", "es", "it", "pt", "de", "nl", "pl"].includes(settings.translationTargetLanguage)) settings.translationTargetLanguage = "fr";
   settings.languageFilterKeepUnknown = settings.languageFilterKeepUnknown === true;
   settings.languageFilterLanguages = [...new Set((Array.isArray(settings.languageFilterLanguages) ? settings.languageFilterLanguages : ["fr", "en"]).filter(code => ["fr", "en", "es", "it", "pt", "de", "nl", "pl"].includes(code)))];
   if (settings.faceFilterMode === "blur-large") settings.faceFilterMode = "blur";
@@ -362,6 +367,59 @@ function sourceAcquisitionDiagnostic({ attemptedAt, finishedAt = Date.now(), out
 async function recordAutomaticHistory(sourceId, rows, metadata) {
   try { await MMPDB.rememberSourceArticles(sourceId, rows, { ...metadata, acquiredCanonicalUrls: rows.map(row => row.canonicalUrl).filter(Boolean) }); }
   catch (error) { console.warn("Historique de diagnostic indisponible :", error); }
+}
+async function ensureSocialRefreshBaseline() {
+  const stored = await browser.storage.local.get({ socialRefreshBaselineVersion: 0, blueskySearchState: { lastSuccessfulByTopic: {} }, linkedinSearchState: { lastSuccessfulByTopic: {} } });
+  if (Number(stored.socialRefreshBaselineVersion) >= SOCIAL_REFRESH_BASELINE_VERSION) return false;
+  const now = Date.now();
+  const blueskySearchState = stored.blueskySearchState || { lastSuccessfulByTopic: {} };
+  const linkedinSearchState = stored.linkedinSearchState || { lastSuccessfulByTopic: {} };
+  blueskySearchState.lastSuccessfulByTopic ||= {};
+  blueskySearchState.cursorByTopic = {};
+  linkedinSearchState.lastSuccessfulByTopic ||= {};
+  for (const topic of Object.keys(blueskySearchState.lastSuccessfulByTopic)) blueskySearchState.lastSuccessfulByTopic[topic] = now;
+  for (const topic of Object.keys(linkedinSearchState.lastSuccessfulByTopic)) linkedinSearchState.lastSuccessfulByTopic[topic] = now;
+  await browser.storage.local.set({ socialRefreshBaselineVersion: SOCIAL_REFRESH_BASELINE_VERSION, blueskySearchState, linkedinSearchState });
+  await browser.storage.local.remove(["blueskyCollectionDiagnostics", "linkedinCollectionDiagnostics"]);
+  return true;
+}
+async function saveAutomaticSocialSnapshots(additionalArticles = []) {
+  const [stored, articles, local] = await Promise.all([
+    browser.storage.local.get({ [AUTOMATIC_SOCIAL_SNAPSHOT_KEY]: [] }),
+    MMPDB.all().catch(error => { console.warn("Lecture IndexedDB avant sauvegarde sociale impossible :", error); return []; }),
+    browser.storage.local.get({ articleStates: {} })
+  ]);
+  const snapshots = new Map((stored[AUTOMATIC_SOCIAL_SNAPSHOT_KEY] || []).map(article => [article.id, article]));
+  for (const article of [...articles, ...additionalArticles]) {
+    if (!(article.sourceIds || [article.sourceId]).some(id => AUTOMATIC_SOCIAL_SOURCE_IDS.has(id))) continue;
+    if (["read", "later"].includes(local.articleStates?.[article.id]?.status)) snapshots.delete(article.id);
+    else snapshots.set(article.id, article);
+  }
+  for (const id of snapshots.keys()) if (["read", "later"].includes(local.articleStates?.[id]?.status)) snapshots.delete(id);
+  const retained = [...snapshots.values()].sort((a, b) => Number(b.publishedAt || 0) - Number(a.publishedAt || 0)).slice(0, 2000);
+  await browser.storage.local.set({ [AUTOMATIC_SOCIAL_SNAPSHOT_KEY]: retained });
+  for (const sourceId of AUTOMATIC_SOCIAL_SOURCE_IDS) {
+    const rows = retained.filter(article => (article.sourceIds || [article.sourceId]).includes(sourceId));
+    if (rows.length) await recordAutomaticHistory(sourceId, rows, automaticHistoryMetadata(sourceId, ["auto-bluesky"], "Automatique"));
+  }
+}
+async function restoreAutomaticSocialSnapshots() {
+  const [stored, articles, local] = await Promise.all([
+    browser.storage.local.get({ [AUTOMATIC_SOCIAL_SNAPSHOT_KEY]: [] }),
+    MMPDB.all(),
+    browser.storage.local.get({ articleStates: {} })
+  ]);
+  const existingIds = new Set(articles.map(article => article.id));
+  const missing = (stored[AUTOMATIC_SOCIAL_SNAPSHOT_KEY] || []).filter(article =>
+    !existingIds.has(article.id) && !["read", "later"].includes(local.articleStates?.[article.id]?.status)
+  );
+  if (!missing.length) return 0;
+  await MMPDB.putMany(missing);
+  for (const sourceId of AUTOMATIC_SOCIAL_SOURCE_IDS) {
+    const rows = missing.filter(article => (article.sourceIds || [article.sourceId]).includes(sourceId));
+    if (rows.length) await recordAutomaticHistory(sourceId, rows, automaticHistoryMetadata(sourceId, ["auto-bluesky"], "Restauration locale"));
+  }
+  return missing.length;
 }
 async function fetchText(url, timeout = 18000) {
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeout);
@@ -1977,12 +2035,12 @@ async function refreshBluesky(acquisitionMode = "Automatique") {
   const stored = await browser.storage.local.get({ blueskySearchState: { lastSuccessfulByTopic: {} }, blueskyCollectionDiagnostics: null });
   const sync = stored.blueskySearchState || { lastSuccessfulByTopic: {} };
   sync.lastSuccessfulByTopic ||= {}; sync.cursorByTopic ||= {};
-  const errors = [], now = Date.now(), knownIds = new Set((await MMPDB.all()).map(article => article.id)); let successCount = 0, addedCount = 0;
+  const errors = [], now = Date.now(), storedArticles = await MMPDB.all(), knownIds = new Set(storedArticles.map(article => article.id)); let successCount = 0, addedCount = 0;
   const diagnostics = { ...diagnosticBase, attempted: true, returned: 0, olderDateRejected: 0, adultRejected: 0, replyRejected: 0, languageRejected: 0, languageUnknownAccepted: 0, subjectRejected: 0, invalidUriRejected: 0, imageRejected: 0, stored: 0, duplicates: 0, topics: [] };
   for (const topic of topics) {
     if (controller.signal.aborted) break;
     const key = MMP.normalizeText(topic.term), legacyCursor = sync.cursorByTopic[key] || "";
-    const previous = Number(sync.lastSuccessfulByTopic[key]) || (legacyCursor ? Number(stored.blueskyCollectionDiagnostics?.at) || now : 0);
+    const previous = Number(sync.lastSuccessfulByTopic[key]) || (legacyCursor ? Number(stored.blueskyCollectionDiagnostics?.at) || now : now);
     const since = previous ? new Date(Math.max(0, previous - 5 * 60000)).toISOString() : undefined;
     // Always start at the newest page. Persisted cursors from older versions
     // could otherwise continue an unbounded first-collection backfill.
@@ -2029,7 +2087,7 @@ async function refreshBluesky(acquisitionMode = "Automatique") {
             discoveredAt: now, fetchedAt: now, blueskyAuthor: post.author?.displayName || handle, blueskyHandle: handle,
             videoChannelName: post.author?.displayName || handle, blueskyTopics: [topic.term], blueskyLink, blueskyLinkTitle: post.embed?.external?.title || "", videoPlatform: "Bluesky" });
         }
-        if (rows.length) { for (const row of rows) if (!knownIds.has(row.id)) { knownIds.add(row.id); addedCount++; topicDiagnostics.stored++; diagnostics.stored++; } else { topicDiagnostics.duplicates++; diagnostics.duplicates++; } await MMPDB.putMany(rows); await recordAutomaticHistory(BLUESKY_SOURCE_ID, rows, automaticHistoryMetadata(BLUESKY_SOURCE_ID, ["auto-bluesky"], acquisitionMode)); }
+        if (rows.length) { for (const row of rows) if (!knownIds.has(row.id)) { knownIds.add(row.id); addedCount++; topicDiagnostics.stored++; diagnostics.stored++; } else { topicDiagnostics.duplicates++; diagnostics.duplicates++; } await MMPDB.putMany(rows); await recordAutomaticHistory(BLUESKY_SOURCE_ID, rows, automaticHistoryMetadata(BLUESKY_SOURCE_ID, ["auto-bluesky"], acquisitionMode)); await saveAutomaticSocialSnapshots(rows); }
         if (!data.cursor || data.cursor === cursor) break;
         cursor = data.cursor;
       }
@@ -2065,14 +2123,14 @@ async function refreshLinkedInNews(acquisitionMode = "Automatique") {
   sync.lastSuccessfulByTopic ||= {};
   const legacyDiagnostics = stored.linkedinCollectionDiagnostics || {};
   const legacyPrevious = Number(legacyDiagnostics.successCount || legacyDiagnostics.queryCount) > 0 ? Number(legacyDiagnostics.at) || 0 : 0;
-  const now = Date.now(), rowsById = new Map((await MMPDB.all()).map(article => [article.id, article]));
+  const now = Date.now(), storedArticles = await MMPDB.all(), rowsById = new Map(storedArticles.map(article => [article.id, article]));
   const rowsByDedupe = new Map([...rowsById.values()].filter(article => (article.sourceIds || [article.sourceId]).includes(LINKEDIN_SOURCE_ID) && article.linkedinDedupeKey).map(article => [article.linkedinDedupeKey, article]));
   const result = { enabled: true, topicCount: allTopics.length, queryCount: 0, resultCount: 0, titleRejected: 0, olderDateRejected: 0, undatedDateRejected: 0, stored: 0, duplicates: 0, imageRejected: 0, queriesLimited: allTopics.length > 8, errors: [], queries: [] };
   let successfulTopics = 0;
   for (const keyword of topics) {
     if (controller.signal.aborted) break;
     try {
-      const topicKey = MMP.normalizeText(keyword), previous = Number(sync.lastSuccessfulByTopic[topicKey]) || legacyPrevious;
+      const topicKey = MMP.normalizeText(keyword), previous = Number(sync.lastSuccessfulByTopic[topicKey]) || legacyPrevious || now;
       const url = MMPL.queryUrl(keyword), response = await fetch(url, { credentials: "omit", headers: { Accept: "application/rss+xml, application/xml, text/xml" }, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) });
       if (!response.ok) throw new Error(`Google Actualités a répondu HTTP ${response.status}.`);
       const xml = await response.text();
@@ -2116,7 +2174,7 @@ async function refreshLinkedInNews(acquisitionMode = "Automatique") {
           additions.push(row); rowsById.set(id, row); rowsByDedupe.set(dedupeKey, row); result.stored++;
         }
       }
-      if (additions.length) { await MMPDB.putMany(additions); await recordAutomaticHistory(LINKEDIN_SOURCE_ID, additions, automaticHistoryMetadata(LINKEDIN_SOURCE_ID, ["auto-bluesky"], acquisitionMode)); }
+      if (additions.length) { await MMPDB.putMany(additions); await recordAutomaticHistory(LINKEDIN_SOURCE_ID, additions, automaticHistoryMetadata(LINKEDIN_SOURCE_ID, ["auto-bluesky"], acquisitionMode)); await saveAutomaticSocialSnapshots(additions); }
       sync.lastSuccessfulByTopic[topicKey] = now;
       successfulTopics++;
     } catch (error) {
@@ -2336,12 +2394,14 @@ async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique") {
   console.info("Diagnostic de collecte des PDF auto", internetArchive);
   const retentionDays = Math.max(1, ...Object.values(current.wallSettings || {}).map(item => Number(item.retentionDays) || 3));
   const cutoff = Date.now() - retentionDays * 86400000;
-  const retainedSources = freshState.automaticWalls.videos
-    ? Object.entries(freshState.videoProviders || {}).filter(([, enabled]) => enabled).map(([provider]) => ({ youtube: YOUTUBE_SOURCE_ID, peertube: PEERTUBE_SOURCE_ID, crowdbunker: CROWDBUNKER_SOURCE_ID, rumble: RUMBLE_SOURCE_ID })[provider]).filter(Boolean)
-    : [];
-  if (freshState.automaticWalls.internetArchive) retainedSources.push(`${INTERNET_ARCHIVE_SOURCE_PREFIX}documents`);
-  await MMPDB.removeOlderThan(cutoff, retainedSources);
   await cleanReadingStates();
+  const { articleStates = {} } = await browser.storage.local.get({ articleStates: {} });
+  const automaticSourceIds = new Set([YOUTUBE_SOURCE_ID, PEERTUBE_SOURCE_ID, CROWDBUNKER_SOURCE_ID, RUMBLE_SOURCE_ID, BLUESKY_SOURCE_ID, LINKEDIN_SOURCE_ID, `${INTERNET_ARCHIVE_SOURCE_PREFIX}documents`]);
+  const protectedUnreadAutomaticIds = (await MMPDB.all())
+    .filter(article => articleStates[article.id]?.status !== "read" && (article.sourceIds || [article.sourceId]).some(id => automaticSourceIds.has(id)))
+    .map(article => article.id);
+  await MMPDB.removeOlderThan(cutoff, [], protectedUnreadAutomaticIds);
+  await saveAutomaticSocialSnapshots();
   await cleanExpiredLikes();
   await browser.storage.local.set({ sources });
   browser.runtime.sendMessage({ type: "articlesUpdated" }).catch(() => {});
@@ -2674,7 +2734,23 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
   }
   if (msg.type === "probeArticleVideo") return probeArticleVideo(msg.articleId);
   if (msg.type === "resolveFranceTvVideo") return resolveFranceTvVideo(msg.videoId, msg.pageUrl);
-  if (msg.type === "articles") {await cleanExpiredLikes();const articleStates=await cleanReadingStates(),[articles,likes]=await Promise.all([MMPDB.all(),MMPDB.likes()]),liked=new Set(likes.map(item=>item.normalizedUrl)),byId=new Map(articles.map(a=>[a.id,a]));for(const [id,item] of Object.entries(articleStates))if(!byId.has(id)&&item.article)byId.set(id,{...item.article,id});return deduplicateArticlesByCanonicalUrl([...byId.values()],articleStates,liked);}
+  if (msg.type === "articles") {
+    try { await restoreAutomaticSocialSnapshots(); }
+    catch (error) { console.warn("Restauration IndexedDB des publications sociales impossible, lecture de la sauvegarde locale :", error); }
+    try { await cleanExpiredLikes(); } catch (error) { console.warn("Nettoyage des favoris expirés impossible :", error); }
+    let articleStates;
+    try { articleStates = await cleanReadingStates(); }
+    catch (error) { console.warn("Nettoyage des états de lecture impossible :", error); articleStates = (await browser.storage.local.get({ articleStates: {} })).articleStates || {}; }
+    const [articles, likes, snapshots] = await Promise.all([
+      MMPDB.all().catch(error => { console.warn("Lecture IndexedDB des articles impossible :", error); return []; }),
+      MMPDB.likes().catch(error => { console.warn("Lecture IndexedDB des favoris impossible :", error); return []; }),
+      browser.storage.local.get({ [AUTOMATIC_SOCIAL_SNAPSHOT_KEY]: [] })
+    ]);
+    const liked = new Set(likes.map(item => item.normalizedUrl)), byId = new Map(articles.map(article => [article.id, article]));
+    for (const article of snapshots[AUTOMATIC_SOCIAL_SNAPSHOT_KEY] || []) if (!byId.has(article.id) && !["read", "later"].includes(articleStates[article.id]?.status)) byId.set(article.id, article);
+    for (const [id, item] of Object.entries(articleStates)) if (!byId.has(id) && item.article) byId.set(id, { ...item.article, id });
+    return deduplicateArticlesByCanonicalUrl([...byId.values()], articleStates, liked);
+  }
   if (msg.type === "likes") { await cleanExpiredLikes(); return (await MMPDB.likes()).sort((a,b)=>b.likedAt-a.likedAt); }
   if (msg.type === "toggleLike") {
     const article = msg.article && typeof msg.article === "object" ? msg.article : await MMPDB.get(msg.articleId);
@@ -2718,7 +2794,7 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
     if (!channelId) throw new Error("YouTube ne fournit pas l’identifiant public de cette chaîne dans ses métadonnées.");
     return { channelId, channelName: metadata.channelName || "Chaîne YouTube" };
   }
-  if (msg.type === "setArticleStatus" || msg.type === "setArticlesStatus") {if(!["read","later"].includes(msg.status))throw new Error("Action inconnue.");const ids=msg.type==="setArticleStatus"?[msg.articleId]:[...new Set(msg.articleIds||[])];if(!ids.length)return true;const articles=await MMPDB.all(), {articleStates={}}=await browser.storage.local.get({articleStates:{}}), byId=new Map(articles.map(a=>[a.id,a])), updatedAt=Date.now();for(const id of ids){const article=byId.get(id)||articleStates[id]?.article;if(!article)continue;articleStates[id]={status:msg.status,updatedAt,article:{id:article.id,sourceId:article.sourceId,sourceIds:article.sourceIds,canonicalUrl:article.canonicalUrl,title:article.title,summary:article.summary||"",image:article.image||"",categories:article.categories||[],publishedAt:article.publishedAt,discoveredAt:article.discoveredAt,dateIsFallback:!!article.dateIsFallback,...(article.atUri?{atUri:article.atUri,blueskyAuthor:article.blueskyAuthor,blueskyHandle:article.blueskyHandle,blueskyTopics:article.blueskyTopics,blueskyLangs:article.blueskyLangs,blueskyLink:article.blueskyLink,blueskyLinkTitle:article.blueskyLinkTitle,videoChannelName:article.videoChannelName,videoPlatform:article.videoPlatform}:{})}};}await browser.storage.local.set({articleStates});browser.runtime.sendMessage({type:"articlesUpdated"}).catch(()=>{});return true;}
+  if (msg.type === "setArticleStatus" || msg.type === "setArticlesStatus") {if(!["read","later"].includes(msg.status))throw new Error("Action inconnue.");const ids=msg.type==="setArticleStatus"?[msg.articleId]:[...new Set(msg.articleIds||[])];if(!ids.length)return true;const articles=await MMPDB.all(), {articleStates={}}=await browser.storage.local.get({articleStates:{}}), byId=new Map(articles.map(a=>[a.id,a])), updatedAt=Date.now();for(const id of ids){const article=byId.get(id)||articleStates[id]?.article;if(!article)continue;articleStates[id]={status:msg.status,updatedAt,article:{id:article.id,sourceId:article.sourceId,sourceIds:article.sourceIds,canonicalUrl:article.canonicalUrl,title:article.title,summary:article.summary||"",image:article.image||"",categories:article.categories||[],publishedAt:article.publishedAt,discoveredAt:article.discoveredAt,dateIsFallback:!!article.dateIsFallback,...(article.atUri?{atUri:article.atUri,blueskyAuthor:article.blueskyAuthor,blueskyHandle:article.blueskyHandle,blueskyTopics:article.blueskyTopics,blueskyLangs:article.blueskyLangs,blueskyLink:article.blueskyLink,blueskyLinkTitle:article.blueskyLinkTitle,videoChannelName:article.videoChannelName,videoPlatform:article.videoPlatform}:{})}};}await browser.storage.local.set({articleStates});await saveAutomaticSocialSnapshots();browser.runtime.sendMessage({type:"articlesUpdated"}).catch(()=>{});return true;}
   if (msg.type === "associateLinkedInPermalink") {
     const updated = await associateLinkedInUrl(msg.articleId, msg.url);
     if (!updated) throw new Error("Utilisez le lien direct d’une publication ou d’un article LinkedIn.");
@@ -2744,7 +2820,7 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
   if (msg.type === "setLinkedInRequireImage") { const linkedinRequireImage=!!msg.enabled;await browser.storage.local.set({linkedinRequireImage});const current=await state();if(current.automaticWalls.bluesky&&current.socialProviders.linkedin)refreshAll().catch(error=>console.warn("Actualisation LinkedIn :",error));browser.runtime.sendMessage({type:"wallsUpdated"}).catch(()=>{});return {linkedinRequireImage}; }
   if (msg.type === "setActiveWall") { const current = await state(), allowedAuto = wall => wall.id === "auto-youtube" ? current.automaticWalls.videos : wall.id === "auto-bluesky" ? current.automaticWalls.bluesky : wall.id === "auto-documents" ? current.automaticWalls.internetArchive : true; if ([...current.walls,...AUTO_WALLS].some(w => w.id === msg.wallId && allowedAuto(w))) { await browser.storage.local.set({ activeWallId: msg.wallId }); browser.runtime.sendMessage({ type: "activeWallChanged", wallId: msg.wallId }).catch(() => {}); } return true; }
   if (msg.type === "setDefaultWall") { const current = await state(); if (!current.walls.some(w => w.id === msg.wallId)) throw new Error("Mur introuvable"); await browser.storage.local.set({ defaultWallId: msg.wallId }); return true; }
-  if (msg.type === "saveAffiliateSettings" || msg.type === "saveSmartFilterSettings") { const operation = async () => { const stored = await browser.storage.local.get({settings:MMP.DEFAULTS.settings}); const settings = {...stored.settings}; for (const key of ["affiliateModuleEnabled", "affiliateWarningsEnabled", "hideAffiliatedContent", "persuasionDetectionEnabled", "clickbaitDetectionEnabled", "languageFilterEnabled", "languageFilterKeepUnknown"]) if (typeof msg.settings?.[key] === "boolean") settings[key] = msg.settings[key]; if (Array.isArray(msg.settings?.languageFilterLanguages)) settings.languageFilterLanguages = [...new Set(msg.settings.languageFilterLanguages.filter(code => ["fr", "en", "es", "it", "pt", "de", "nl", "pl"].includes(code)))]; if (settings.languageFilterEnabled && !settings.languageFilterLanguages?.length) settings.languageFilterEnabled = false; if (["off", "blur", "hide"].includes(msg.settings?.faceFilterMode)) settings.faceFilterMode = msg.settings.faceFilterMode; if (Number.isFinite(Number(msg.settings?.faceDetectionThreshold))) settings.faceDetectionThreshold = Math.max(30, Math.min(90, Number(msg.settings.faceDetectionThreshold))); if (typeof msg.settings?.speechLanguage === "string") settings.speechLanguage = msg.settings.speechLanguage; if (typeof msg.settings?.speechVoiceURI === "string") settings.speechVoiceURI = msg.settings.speechVoiceURI; await browser.storage.local.set({settings}); return true; }; const result=settingsWriteQueue.then(operation,operation); settingsWriteQueue=result.catch(()=>{}); return result; }
+  if (msg.type === "saveAffiliateSettings" || msg.type === "saveSmartFilterSettings") { const operation = async () => { const stored = await browser.storage.local.get({settings:MMP.DEFAULTS.settings}); const settings = {...stored.settings}; for (const key of ["affiliateModuleEnabled", "affiliateWarningsEnabled", "hideAffiliatedContent", "persuasionDetectionEnabled", "clickbaitDetectionEnabled", "languageFilterEnabled", "languageFilterKeepUnknown", "translationEnabled"]) if (typeof msg.settings?.[key] === "boolean") settings[key] = msg.settings[key]; if (["fr", "en", "es", "it", "pt", "de", "nl", "pl"].includes(msg.settings?.translationTargetLanguage)) settings.translationTargetLanguage = msg.settings.translationTargetLanguage; if (Array.isArray(msg.settings?.languageFilterLanguages)) settings.languageFilterLanguages = [...new Set(msg.settings.languageFilterLanguages.filter(code => ["fr", "en", "es", "it", "pt", "de", "nl", "pl"].includes(code)))]; if (settings.languageFilterEnabled && !settings.languageFilterLanguages?.length) settings.languageFilterEnabled = false; if (["off", "blur", "hide"].includes(msg.settings?.faceFilterMode)) settings.faceFilterMode = msg.settings.faceFilterMode; if (Number.isFinite(Number(msg.settings?.faceDetectionThreshold))) settings.faceDetectionThreshold = Math.max(30, Math.min(90, Number(msg.settings.faceDetectionThreshold))); if (typeof msg.settings?.speechLanguage === "string") settings.speechLanguage = msg.settings.speechLanguage; if (typeof msg.settings?.speechVoiceURI === "string") settings.speechVoiceURI = msg.settings.speechVoiceURI; await browser.storage.local.set({settings}); return true; }; const result=settingsWriteQueue.then(operation,operation); settingsWriteQueue=result.catch(()=>{}); return result; }
   if (msg.type === "saveSemanticSettings") { const operation = async () => { const stored = await browser.storage.local.get({settings:MMP.DEFAULTS.settings}); const settings = {...stored.settings}; for (const key of ["excludedKeywords", "excludedCategories", "priorities", "mode"]) if (msg.settings?.[key] !== undefined) settings[key] = msg.settings[key]; await browser.storage.local.set({settings}); browser.runtime.sendMessage({type:"wallsUpdated"}).catch(()=>{}); return true; }; const result=settingsWriteQueue.then(operation,operation); settingsWriteQueue=result.catch(()=>{}); return result; }
   if (msg.type === "saveWallSettings") { const operation = async () => { const current = await state(), wallId = msg.wallId; if (!current.walls.some(w => w.id === wallId)) throw new Error("Mur introuvable"); const { archiveRetentionDays, laterRetentionDays, ...wallPatch } = msg.settings || {}; const wallSettings = { ...current.wallSettings, [wallId]: { ...defaultWallSettings(), ...current.wallSettings[wallId], ...wallPatch } }; wallSettings[wallId].retentionDays = Math.max(1, Math.min(365, Number(wallSettings[wallId].retentionDays) || 3)); const stored = await browser.storage.local.get({settings:MMP.DEFAULTS.settings}); const settings = {...stored.settings}; if (archiveRetentionDays !== undefined) settings.archiveRetentionDays = Math.max(1,Math.min(365,Number(archiveRetentionDays)||2)); if (laterRetentionDays !== undefined) settings.laterRetentionDays = Math.max(1,Math.min(365,Number(laterRetentionDays)||90)); await browser.storage.local.set({ wallSettings, settings }); browser.runtime.sendMessage({ type: "wallsUpdated", activeWallId: current.activeWallId }).catch(() => {}); return true; }; const result = settingsWriteQueue.then(operation, operation); settingsWriteQueue = result.catch(() => {}); return result; }
   if (msg.type === "manageWalls") {
@@ -2948,7 +3024,7 @@ async function init() {
   // state() normalizes and persists the global settings and per-wall settings.
   // Its returned `settings` also contains the active wall's filters and mode;
   // writing that merged view back as global settings would mix the two scopes.
-  const current = await state(); await browser.storage.local.remove("pendingDiscoveries"); await ensureProcessedDiscoveryMemory(current.sources); await cleanReadingStates();
+  const current = await state(); await ensureSocialRefreshBaseline(); await browser.storage.local.remove("pendingDiscoveries"); await ensureProcessedDiscoveryMemory(current.sources); await cleanReadingStates(); await restoreAutomaticSocialSnapshots(); await saveAutomaticSocialSnapshots();
   // A newly started background context cannot still own the refresh recorded
   // by its predecessor. Clear that abandoned in-progress marker so the stale
   // refresh check below can resume collection immediately.

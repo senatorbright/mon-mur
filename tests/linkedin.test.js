@@ -52,7 +52,7 @@ function makeDatabase() {
 function makeRefreshHarness({ imageRequired = false, term = "OpenAI", rssXml = rss.replace("Publication de test", "OpenAI : publication de test"), initialStorage = {} } = {}) {
   const source = fs.readFileSync(path.join(root, "js/background.js"), "utf8");
   const functions = source.slice(source.indexOf("function linkedinTopics("), source.indexOf("function iaField("));
-  const { indexedDB, rows } = makeDatabase(), savedDiagnostics = {}, storageData = { ...initialStorage };
+  const { indexedDB, rows } = makeDatabase(), savedDiagnostics = {}, storageData = { linkedinSearchState: { lastSuccessfulByTopic: { [String(term).toLowerCase()]: Date.now() - 60000 } }, ...initialStorage };
   let activeRssXml = rssXml;
   const context = vm.createContext({
     AbortController, AbortSignal, Date, Map, Set, URL, URLSearchParams, encodeURIComponent,
@@ -62,6 +62,7 @@ function makeRefreshHarness({ imageRequired = false, term = "OpenAI", rssXml = r
     LINKEDIN_SOURCE_ID: "linkedin-keyword-search",
     automaticHistoryMetadata: () => ({}),
     recordAutomaticHistory: async () => {},
+    saveAutomaticSocialSnapshots: async () => {},
     MMP: {
       normalizeText: value => String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
       matchTerm: (haystack, value) => {
@@ -156,14 +157,15 @@ test("LinkedIn uses a successful legacy refresh timestamp when migrating its sea
   assert.equal(rows.size, 0);
 });
 
-test("LinkedIn allows its initial seven-day collection before a refresh baseline exists", async () => {
+test("LinkedIn initial collection rejects results published before the first refresh", async () => {
   const previousWeek = Date.now() - 6 * 86400000;
   const rssXml = rss.replace(/<pubDate>[^<]+<\/pubDate>/, `<pubDate>${new Date(previousWeek).toUTCString()}</pubDate>`)
     .replace("Publication de test", "OpenAI : publication de test");
-  const { context, rows } = makeRefreshHarness({ rssXml });
+  const { context, rows } = makeRefreshHarness({ rssXml, initialStorage: { linkedinSearchState: { lastSuccessfulByTopic: {} } } });
   const result = await vm.runInContext("refreshLinkedInNews()", context);
-  assert.equal(result.stored, 1);
-  assert.equal(rows.size, 1);
+  assert.equal(result.olderDateRejected, 1);
+  assert.equal(result.stored, 0);
+  assert.equal(rows.size, 0);
 });
 
 test("a legacy LinkedIn image-only preference does not discard Google News RSS results", async () => {

@@ -20,7 +20,7 @@ Les autorisations de sites sont accordées par Firefox. Sans accès global, l’
 
 ## Installer une release
 
-Les releases et leurs fichiers sont publiés sur [GitHub](https://github.com/senatorbright/mon-mur/releases). Le XPI 5.8.0 est non signé.
+Les releases et leurs fichiers sont publiés sur [GitHub](https://github.com/senatorbright/mon-mur/releases). Le XPI publié 5.8.0 est non signé; les paquets 5.9.0 ne sont pas encore construits.
 
 ### Firefox Nightly sur ordinateur
 
@@ -56,6 +56,10 @@ Le partage collectif des J’aime avec un mur automatique commun est une idée �
 
 **Licence du projet : GNU GPL v3**, fournie dans `LICENSE`. Les composants tiers et ressources graphiques conservent leurs licences et conditions propres, récapitulées dans `THIRD_PARTY_NOTICES.md` et `amo/ASSET-LICENSES.fr.md`; les visuels de plateforme sans provenance établie ont été remplacés par des pictogrammes originaux sous GPLv3.
 
-## État de la version 5.8.0
+## État de la version 5.9.0
+
+Le manifeste et le changelog source ciblent 5.9.0. Les tests automatisés, `web-ext lint`, la construction des archives et les essais manuels de cette version restent à effectuer. La version installable publiée la plus récente reste la 5.8.0; voir ci-dessous pour ses résultats.
+
+## Version précédente 5.8.0
 
 La version 5.8.0 est publiée en préversion. Les 284 tests automatisés passent. `web-ext lint` rapporte 0 erreur, 0 notice et 16 avertissements à examiner. Les archives ZIP et XPI non signé 5.8.0 sont construites et contrôlées; les essais manuels Firefox restent nécessaires. Sur Firefox Nightly Android, le XPI peut être installé depuis un fichier après désactivation de `xpinstall.signatures.required`; la procédure et la précaution associée sont décrites ci-dessus. Consulter [BUILD-AND-REVIEW.fr.md](amo/BUILD-AND-REVIEW.fr.md) pour l’état des contrôles.

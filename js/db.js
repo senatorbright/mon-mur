@@ -68,9 +68,9 @@ const MMPDB = (() => {
       tx.onerror = tx.onabort = () => reject(tx.error || req?.error);
     });
   }
-  function retainByAge(article, cutoff, preservedSourceIds = []) {
+  function retainByAge(article, cutoff, preservedSourceIds = [], preservedArticleIds = []) {
     const sourceIds = article.sourceIds || [article.sourceId];
-    return Number(article.publishedAt || 0) > cutoff || sourceIds.some(id => preservedSourceIds.includes(id));
+    return Number(article.publishedAt || 0) > cutoff || preservedArticleIds.includes(article.id) || sourceIds.some(id => preservedSourceIds.includes(id));
   }
   return {
     retainByAge,
@@ -301,11 +301,11 @@ const MMPDB = (() => {
         tx.oncomplete = () => resolve(removed); tx.onerror = tx.onabort = () => reject(tx.error || req.error);
       });
     },
-    async removeOlderThan(cutoff, preservedSourceIds = []) {
+    async removeOlderThan(cutoff, preservedSourceIds = [], preservedArticleIds = []) {
       const db = await open();
       return new Promise((resolve, reject) => {
         const tx = db.transaction(["articles", "expiredArticles"], "readwrite"), expired = tx.objectStore("expiredArticles"), req = tx.objectStore("articles").index("publishedAt").openCursor(IDBKeyRange.upperBound(cutoff));
-        req.onsuccess = () => { const c = req.result; if (c) { if (retainByAge(c.value, cutoff, preservedSourceIds)) { c.continue(); return; } if (c.value?.canonicalUrl) expired.put({ canonicalUrl: c.value.canonicalUrl, expiredAt: Date.now() }); c.delete(); c.continue(); } };
+        req.onsuccess = () => { const c = req.result; if (c) { if (retainByAge(c.value, cutoff, preservedSourceIds, preservedArticleIds)) { c.continue(); return; } if (c.value?.canonicalUrl) expired.put({ canonicalUrl: c.value.canonicalUrl, expiredAt: Date.now() }); c.delete(); c.continue(); } };
         tx.oncomplete = resolve; tx.onerror = tx.onabort = () => reject(tx.error);
       });
     }

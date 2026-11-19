@@ -7,6 +7,7 @@ const vm = require("node:vm");
 const context = vm.createContext({ indexedDB: {}, IDBKeyRange: {}, Date, Set, Number });
 vm.runInContext(fs.readFileSync(path.join(__dirname, "../js/db.js"), "utf8"), context);
 const retainByAge = (article, threshold, sources) => vm.runInContext(`MMPDB.retainByAge(${JSON.stringify(article)}, ${threshold}, ${JSON.stringify(sources)})`, context);
+const retainPinned = (article, ids) => vm.runInContext(`MMPDB.retainByAge(${JSON.stringify(article)}, ${cutoff}, [], ${JSON.stringify(ids)})`, context);
 const cutoff = 1_000;
 
 test("old auto videos survive cleanup while classical walls still filter them by their own retention", () => {
@@ -30,6 +31,14 @@ test("old PDF auto documents survive cleanup only while Internet Archive is enab
   const shared = { ...pdf, sourceIds: ["wall-source", "internet-archive:documents"] };
   assert.equal(retainByAge(shared, cutoff, ["internet-archive:documents"]), true);
   assert.equal(Number(shared.publishedAt) >= cutoff, false, "classic walls still apply their existing age cutoff");
+});
+
+test("old unread automatic-wall items stay stored until marked read across every provider", () => {
+  for (const sourceId of ["youtube-keyword-search", "peertube-keyword-search", "crowdbunker-keyword-search", "rumble-keyword-search", "bluesky-keyword-search", "linkedin-keyword-search", "internet-archive:documents"]) {
+    const unread = { id: sourceId, sourceId, sourceIds: [sourceId], publishedAt: 500 };
+    assert.equal(retainPinned(unread, [sourceId]), true, `${sourceId} stays in the database while unread`);
+    assert.equal(retainPinned(unread, []), false, `${sourceId} can expire after it is marked read`);
+  }
 });
 
 test("a video stays stored through a second refresh and an expired known video is not reimported", () => {

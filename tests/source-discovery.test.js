@@ -119,7 +119,7 @@ test("source processing is persistent, reversible, and automatically applied to 
 
 test("adding a source preserves the durable followed-source memory without a pending queue", () => {
   assert.match(background, /await browser\.storage\.local\.set\(\{ sources: \[\.\.\.current\.sources, source\] \}\)/u);
-  assert.match(background, /const current = await state\(\); await browser\.storage\.local\.remove\("pendingDiscoveries"\); await ensureProcessedDiscoveryMemory\(current\.sources\)/u);
+  assert.match(background, /const current = await state\(\);[\s\S]*?await browser\.storage\.local\.remove\("pendingDiscoveries"\);[\s\S]*?await ensureProcessedDiscoveryMemory\(current\.sources\)/u);
   assert.match(background, /changes\.sources\) ensureProcessedDiscoveryMemory\(changes\.sources\.newValue \|\| \[\]\)/u);
   assert.doesNotMatch(background, /reconcilePendingDiscoveries/u);
 });

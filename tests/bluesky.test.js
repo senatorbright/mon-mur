@@ -23,7 +23,7 @@ test("Bluesky stores an eligible post with its external-card title", async () =>
   const source = fs.readFileSync(path.join(__dirname, "../js/background.js"), "utf8");
   const functions = source.slice(source.indexOf("function blueskyTopics("), source.indexOf("function iaField("));
   const saved = [];
-  const data = { blueskySearchState: { lastSuccessfulByTopic: {} } };
+  const data = { blueskySearchState: { lastSuccessfulByTopic: { nixos: Date.parse("2026-10-27T00:00:00Z") } } };
   const post = {
     uri: "at://did:plc:abc/app.bsky.feed.post/post1",
     record: { text: "NixOS en français", langs: ["fr"], createdAt: "2026-10-28T10:00:00Z" },
@@ -31,12 +31,12 @@ test("Bluesky stores an eligible post with its external-card title", async () =>
     embed: { external: { uri: "https://example.test/article", title: "Article lié" } }
   };
   const posts = [post,
-    { uri: "at://did:plc:untagged/app.bsky.feed.post/p7", record: { text: "NixOS est un sujet français sans langue déclarée" }, author: { handle: "sans-langue.example" } },
-    { uri: "at://did:plc:language/app.bsky.feed.post/p2", record: { text: "NixOS in English", langs: ["en"] } },
-    { uri: "at://did:plc:subject/app.bsky.feed.post/p3", record: { text: "Autre sujet en français", langs: ["fr"] } },
-    { uri: "not-an-at-uri", record: { text: "NixOS en français", langs: ["fr"] } },
-    { uri: "at://did:plc:reply/app.bsky.feed.post/p4", record: { text: "NixOS, réponse en français", langs: ["fr"], reply: { root: { uri: "at://did:plc:root/app.bsky.feed.post/root1" }, parent: { uri: "at://did:plc:root/app.bsky.feed.post/root1" } } } },
-    { uri: "at://did:plc:adult/app.bsky.feed.post/p5", record: { text: "NixOS", langs: ["fr"] }, labels: [{ val: "porn" }] }
+    { uri: "at://did:plc:untagged/app.bsky.feed.post/p7", record: { text: "NixOS est un sujet français sans langue déclarée", createdAt: new Date("2026-10-28T10:00:00Z").toISOString() }, author: { handle: "sans-langue.example" } },
+    { uri: "at://did:plc:language/app.bsky.feed.post/p2", record: { text: "NixOS in English", langs: ["en"], createdAt: "2026-10-28T10:00:00Z" } },
+    { uri: "at://did:plc:subject/app.bsky.feed.post/p3", record: { text: "Autre sujet en français", langs: ["fr"], createdAt: "2026-10-28T10:00:00Z" } },
+    { uri: "not-an-at-uri", record: { text: "NixOS en français", langs: ["fr"], createdAt: "2026-10-28T10:00:00Z" } },
+    { uri: "at://did:plc:reply/app.bsky.feed.post/p4", record: { text: "NixOS, réponse en français", langs: ["fr"], createdAt: "2026-10-28T10:00:00Z", reply: { root: { uri: "at://did:plc:root/app.bsky.feed.post/root1" }, parent: { uri: "at://did:plc:root/app.bsky.feed.post/root1" } } } },
+    { uri: "at://did:plc:adult/app.bsky.feed.post/p5", record: { text: "NixOS", langs: ["fr"], createdAt: "2026-10-28T10:00:00Z" }, labels: [{ val: "porn" }] }
   ];
   const context = vm.createContext({
     hasSearchTermsConsent: async () => true,
@@ -45,6 +45,7 @@ test("Bluesky stores an eligible post with its external-card title", async () =>
     BLUESKY_SOURCE_ID: "bluesky-keyword-search",
     automaticHistoryMetadata: () => ({}),
     recordAutomaticHistory: async () => {},
+    saveAutomaticSocialSnapshots: async () => {},
     Date,
     Map,
     Set,
@@ -106,10 +107,10 @@ test("Bluesky retries its public search endpoint with the documented case-sensit
   const source = fs.readFileSync(path.join(__dirname, "../js/background.js"), "utf8");
   const functions = source.slice(source.indexOf("function blueskyTopics("), source.indexOf("function iaField("));
   const urls = [], saved = [];
-  const data = { blueskySearchState: { lastSuccessfulByTopic: {} } };
+  const data = { blueskySearchState: { lastSuccessfulByTopic: { nixos: Date.now() - 60000 } } };
   const post = { uri: "at://did:plc:abc/app.bsky.feed.post/post1", record: { text: "NixOS en français", langs: ["fr"], createdAt: new Date().toISOString() }, author: { handle: "auteur.example" } };
   const context = vm.createContext({
-    hasSearchTermsConsent: async () => true, AbortController, AbortSignal, BLUESKY_SOURCE_ID: "bluesky-keyword-search", automaticHistoryMetadata: () => ({}), recordAutomaticHistory: async () => {}, Date, Map, Set, URL, encodeURIComponent,
+    hasSearchTermsConsent: async () => true, AbortController, AbortSignal, BLUESKY_SOURCE_ID: "bluesky-keyword-search", automaticHistoryMetadata: () => ({}), recordAutomaticHistory: async () => {}, saveAutomaticSocialSnapshots: async () => {}, Date, Map, Set, URL, encodeURIComponent,
     fetch: async url => { urls.push(String(url)); return urls.length === 1 ? { ok: false, status: 403 } : { ok: true, status: 200, json: async () => ({ posts: [post] }) }; },
     browser: { storage: { local: { get: async () => data, set: async value => Object.assign(data, value) } } },
     state: async () => ({ automaticWalls: { bluesky: true }, socialProviders: { bluesky: true }, blueskyRequireImage: false, settings: { priorities: [{ term: "NixOS", level: "high" }] } }),
@@ -140,7 +141,7 @@ test("Bluesky refreshes ignore legacy history cursors and reject posts at or bef
   });
   const context = vm.createContext({
     hasSearchTermsConsent: async () => true, AbortController, AbortSignal, Date, Map, Set, URL, encodeURIComponent,
-    BLUESKY_SOURCE_ID: "bluesky-keyword-search", automaticHistoryMetadata: () => ({}), recordAutomaticHistory: async () => {},
+    BLUESKY_SOURCE_ID: "bluesky-keyword-search", automaticHistoryMetadata: () => ({}), recordAutomaticHistory: async () => {}, saveAutomaticSocialSnapshots: async () => {},
     fetch: async url => {
       urls.push(String(url));
       return { ok: true, status: 200, json: async () => ({ posts: [post("old", new Date(previous - 1000).toISOString()), post("new", new Date(previous + 1000).toISOString())] }) };

@@ -1,4 +1,4 @@
-# Mon Mur 5.8.0
+# Mon Mur 5.10.0
 
 > Projet personnel, prototype fonctionnel et cahier des charges vivant, réalisé à 100 % par « vibe coding ». Il répondait aux besoins de son auteur; il est partagé pour être lu, repris et amélioré par des personnes qui souhaitent contribuer. Il n’y a pas d’engagement de maintenance ni de feuille de route de nouvelles fonctions. Le code Mon Mur est distribué sous licence GNU GPL v3; les ressources tierces gardent leurs licences et réserves propres, détaillées dans [les avis](THIRD_PARTY_NOTICES.md) et [l’inventaire des ressources](docs/amo/ASSET-LICENSES.fr.md).
 
@@ -18,13 +18,13 @@ Le mur s’ouvre depuis le panneau. Pour utiliser cette copie, rechargez l’ext
 
 ## Installer la version publiée
 
-Téléchargez les fichiers depuis la [release GitHub](https://github.com/senatorbright/mon-mur/releases). Le paquet XPI de la version 5.8.0 est non signé.
+La version source est 5.10.0. Téléchargez la dernière version installable et ses fichiers depuis [GitHub](https://github.com/senatorbright/mon-mur/releases). Le XPI est non signé.
 
 ### Sur ordinateur avec Firefox Nightly
 
 1. Dans Firefox Nightly, ouvrez `about:config` et réglez `xpinstall.signatures.required` sur `false`.
 2. Ouvrez `about:addons`, puis le menu engrenage et **Installer un module depuis un fichier…**.
-3. Choisissez le fichier `mon-mur-5.8.0.xpi` téléchargé et confirmez.
+3. Choisissez le fichier `mon-mur-5.10.0.xpi` téléchargé et confirmez.
 
 Cette option concerne Nightly sur ordinateur. Remettez la préférence à `true` après l’essai si vous souhaitez réactiver la vérification des signatures.
 
@@ -32,7 +32,7 @@ Cette option concerne Nightly sur ordinateur. Remettez la préférence à `true`
 
 Le XPI non signé de cette release peut être installé dans Firefox Nightly Android en désactivant la vérification des signatures. Ce réglage réduit la protection contre les extensions modifiées : installez uniquement le fichier téléchargé depuis la release officielle Mon Mur.
 
-1. Téléchargez `mon-mur-5.8.0.xpi` sur le téléphone.
+1. Téléchargez `mon-mur-5.10.0.xpi` sur le téléphone.
 2. Dans Firefox Nightly, ouvrez `about:config`. Si cette adresse n’est pas disponible, ouvrez `chrome://geckoview/content/config.xhtml`.
 3. Recherchez `xpinstall.signatures.required` et réglez cette préférence booléenne sur `false`.
 4. Ouvrez **Paramètres → À propos de Firefox Nightly**, puis touchez le logo Firefox Nightly cinq fois pour activer le menu de débogage.
@@ -63,7 +63,7 @@ Sur smartphone, la navigation latérale se replie pour laisser toute la largeur 
 - Les résumés affichés sur les cartes du mur sont limités à 300 caractères avant l’ouverture de l’article; la coupure se fait de préférence à la fin d’un mot.
 
 - **Filtres intelligents → Visages dans les vignettes** active ou désactive globalement le filtre et propose le floutage des visages en gros plan ou le masquage d’une carte lorsqu’un visage est détecté. Dans **Préférences → Murs → Mes murs**, la colonne **Visages** autorise son application sur chaque mur. Le filtre est autorisé par défaut sur **Vidéos auto** et désactivé sur les murs personnalisés jusqu’à activation dans leur ligne. Un seuil de confiance réglable contrôle la sensibilité : le diminuer repère davantage de visages, au prix de plus de faux positifs. La détection BlazeFace tourne localement dans Firefox. À l’activation, Firefox demande l’autorisation de lire les images des sites (y compris les CDN); les images et détections restent locales.
-- **Filtres intelligents → Affiliation** propose un contrôle général Actif/Inactif qui affiche les avertissements, cocardes et détails des affiliations, ainsi qu’une option pour masquer les articles et vidéos avec au moins une affiliation confirmée. Désactiver le module suspend temporairement ses effets sans effacer les préférences internes. Le masquage ne supprime aucune donnée; les liens suspects restent visibles. Les préférences sont conservées dans Firefox et incluses dans les sauvegardes.
+- **Filtres intelligents → Affiliation** propose un contrôle général Actif/Inactif qui affiche les avertissements, cocardes et détails des affiliations, ainsi qu’une option pour masquer les articles et vidéos avec au moins une affiliation confirmée. Désactiver le module suspend temporairement ses effets sans effacer les préférences internes. Le masquage ne supprime aucune donnée; les liens suspects restent visibles. Les préférences sont conservées dans Firefox et incluses dans les sauvegardes. **Filtres intelligents → Langues des contenus** permet aussi de choisir une langue cible par défaut et d’afficher une action « Traduire avec Firefox » sur les articles. Cette action apparaît uniquement lorsque l’article est déplié. L’action ouvre une vue de lecture Mon Mur avec la langue de l’article déclarée dès le chargement. Firefox 139+ prend en charge la traduction native de pages d’extension; utilisez alors son icône ou son menu « Traduire la page ». La traduction est locale et l’action n’ouvre pas le site source. Le choix de langue de Mon Mur ne remplace pas les préférences de traduction propres à Firefox. Ces deux réglages sont inclus dans les sauvegardes JSON.
 
 - RSS/Atom est préféré. Un flux est enregistré seulement après validation XML et récupération d’au moins un article.
 - Sans flux valide, l’extraction de secours retient les liens présents dans des éléments `<article>`, les données JSON-LD `Article`/`NewsArticle` et certains liens datés dont la structure URL est explicite. Les pages qui n’exposent pas ces structures ne sont pas enregistrées comme sources opérationnelles.
@@ -138,4 +138,4 @@ Dans **Préférences → Murs → Murs automatiques**, **Documents PDF en franç
 
 Le projet reste expérimental. Les collectes dépendent des flux et des pages accessibles; le scraping depuis le navigateur peut être limité par les sites ou les autorisations Firefox. Le XPI construit localement est non signé et ne représente pas une validation Mozilla. Les essais manuels Firefox de cette publication restent nécessaires.
 
-Le changelog cumulatif est disponible dans [`v5.8.0.txt`](v5.8.0.txt). Le code Mon Mur est sous GNU GPLv3 ([`LICENSE`](LICENSE)); les ressources tierces conservent leurs licences et l’icône Mon Mur et les pictogrammes génériques introduits en 5.6.0 sont également distribués sous GPLv3.
+Le changelog cumulatif est disponible dans [`v5.10.0.txt`](v5.10.0.txt). Le code Mon Mur est sous GNU GPLv3 ([`LICENSE`](LICENSE)); les ressources tierces conservent leurs licences et l’icône Mon Mur et les pictogrammes génériques introduits en 5.6.0 sont également distribués sous GPLv3.

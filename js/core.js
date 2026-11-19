@@ -1,6 +1,6 @@
 "use strict";
 const MMP = (() => {
-  const DEFAULTS = { sources: [], settings: { excludedKeywords: [], excludedCategories: [], priorities: [], mode: "chronological", faceFilterMode: "off", faceDetectionThreshold: 75, persuasionDetectionEnabled: false, clickbaitDetectionEnabled: false, languageFilterEnabled: false, languageFilterLanguages: ["fr", "en"], languageFilterKeepUnknown: false, retentionDays: 30, archiveRetentionDays: 2, laterRetentionDays: 90, speechLanguage: "fr-FR", speechVoiceURI: "", affiliateModuleEnabled: true, affiliateWarningsEnabled: true, hideAffiliatedContent: false } };
+  const DEFAULTS = { sources: [], settings: { excludedKeywords: [], excludedCategories: [], priorities: [], mode: "chronological", faceFilterMode: "off", faceDetectionThreshold: 75, persuasionDetectionEnabled: false, clickbaitDetectionEnabled: false, languageFilterEnabled: false, languageFilterLanguages: ["fr", "en"], languageFilterKeepUnknown: false, translationTargetLanguage: "fr", translationEnabled: false, retentionDays: 30, archiveRetentionDays: 2, laterRetentionDays: 90, speechLanguage: "fr-FR", speechVoiceURI: "", affiliateModuleEnabled: true, affiliateWarningsEnabled: true, hideAffiliatedContent: false } };
   const normalizeText = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr").replace(/\s+/g, " ").trim();
   function cleanUrl(value, base) {
     if (typeof value !== "string" || !value.trim()) return "";

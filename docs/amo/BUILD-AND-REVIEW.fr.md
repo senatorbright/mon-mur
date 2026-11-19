@@ -1,5 +1,13 @@
 # Construction et revue AMO
 
+## Préparation 5.10.0 — 19 novembre 2026
+
+Le manifeste cible `5.10.0`. Cette version corrige le rafraîchissement du mur automatique des réseaux sociaux : les nouvelles publications sont bornées par la dernière actualisation réussie et les instantanés restent disponibles après fermeture puis réouverture de l’onglet. La suite automatisée passe avec 287 tests. `web-ext lint` rapporte 0 erreur, 0 notice et 16 avertissements existants liés à `innerHTML`, aux scripts shell inclus et à des fichiers HTML de test. `./scripts/build-release.sh` produit le ZIP et le XPI non signé 5.10.0; l’archive ZIP est valide et le manifeste du XPI indique bien 5.10.0. Le cycle fermeture/réouverture du mur a été confirmé par l’utilisateur après rechargement de la version récente.
+
+## Préparation 5.9.0 — 19 novembre 2026
+
+Le manifeste cible `5.9.0`. Cette version ajoute les gestes horizontaux et leur animation de sortie sur smartphone, regroupe les trois actions de lecture dans la barre sticky sur ordinateur, centre les commandes Ouvrir/Replier et améliore l’espacement de la version affichée dans les préférences. La suite automatisée passe avec 287 tests. `web-ext lint` sur le paquet produit 0 erreur, 0 notice et 9 avertissements liés aux affectations `innerHTML` et au constructeur `Function` dans les scripts applicatifs et bibliothèques. `./scripts/build-release.sh` produit les archives ZIP et XPI 5.9.0; le manifeste et le contenu social de l’XPI ont été vérifiés. Un essai Firefox 159 headless via `web-ext run` a démarré avec un profil dédié, mais le contrôle complet fermeture/réouverture n’a pas été obtenu dans cet environnement. Les essais manuels du cycle du mur restent nécessaires.
+
 ## Préparation 5.8.0 — 18 novembre 2026
 
 Le manifeste cible `5.8.0`. Cette version améliore la lecture mobile et l’accessibilité des commandes : barre latérale repliable, réglage mémorisé de la taille du texte, commandes d’article adaptées aux écrans tactiles, indicateur de chargement et réutilisation de l’onglet Mon Mur depuis le panneau de l’extension.

@@ -115,7 +115,7 @@ test("selecting a wall keeps its badge through the active-wall broadcast", async
     }
     throw new Error(`Unexpected message: ${message.type}`);
   } } };
-  vm.runInContext(section("async function switchWall(", "function startupWallWithContent("), context);
+  vm.runInContext(section("async function switchWall(", "async function load("), context);
 
   context.updateWallTabCounts();
   assert.equal(badge()?.textContent, "2");
