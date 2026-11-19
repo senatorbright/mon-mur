@@ -2,11 +2,17 @@
 
 > Projet personnel, prototype fonctionnel et cahier des charges vivant, réalisé à 100 % par « vibe coding ». Il répondait aux besoins de son auteur; il est partagé pour être lu, repris et amélioré par des personnes qui souhaitent contribuer. Il n’y a pas d’engagement de maintenance ni de feuille de route de nouvelles fonctions. Le code Mon Mur est distribué sous licence GNU GPL v3; les ressources tierces gardent leurs licences et réserves propres, détaillées dans [les avis](THIRD_PARTY_NOTICES.md) et [l’inventaire des ressources](docs/amo/ASSET-LICENSES.fr.md).
 
-Extension Firefox personnelle qui conserve localement des articles de sources choisies par l’utilisateur.
+Mon Mur est un agrégateur personnel et autonome pour Firefox. Il rassemble les publications de vos sites et sources suivis dans des murs thématiques afin de repérer les nouveautés, les parcourir et les lire au même endroit.
+
+Il n’y a ni compte Mon Mur ni serveur Mon Mur : les murs, réglages et contenus conservés restent dans le profil Firefox. L’extension ne collecte pas de données en secret. Certaines recherches et certains enrichissements facultatifs transmettent les requêtes nécessaires à des services tiers, uniquement après consentement; leur usage est décrit dans **Préférences → Données et accès**.
+
+Suivez des flux RSS/Atom et des pages compatibles, puis classez les contenus par sujet : actualités locales, agenda, vidéos et autres thèmes. Marquez un contenu comme lu, gardez-le « À plus tard » ou retrouvez-le dans vos J’aime. Les articles peuvent s’ouvrir dans le lecteur intégré et les vidéos se lire dans le mur lorsque la source le permet. L’affichage des articles extraits retire souvent les éléments périphériques des sites; Mon Mur n’est toutefois pas un bloqueur de publicités et les lecteurs vidéo peuvent encore en afficher.
+
+Des murs automatiques peuvent repérer des vidéos, des publications de réseaux sociaux et des PDF à partir de vos mots-clés prioritaires. Les filtres permettent aussi d’exclure des termes ou catégories, de masquer certains visages expressifs sur les vignettes et de signaler les indices d’affiliation ou de persuasion dans les contenus.
 
 Voir les [captures d’écran officielles de Mon Mur 5.10.0](docs/screenshots/README.md).
 
-Extension Firefox expérimentale, réalisée par « vibe coding ». Mon Mur fonctionne dans le navigateur, sans compte Mon Mur ni serveur applicatif dédié : les sources RSS/Atom sont collectées et les pages compatibles sont extraites depuis Firefox, puis les données restent dans le profil local. Elle sert à lire et organiser des articles dans des murs thématiques, suivre des sources et sujets, filtrer et conserver des contenus, et retrouver ses J’aime.
+Extension Firefox expérimentale, réalisée par « vibe coding ». Les autorisations de sites sont gérées par Firefox et peuvent être contrôlées dans **Préférences → Données et accès**.
 
 
 ## Installation temporaire
