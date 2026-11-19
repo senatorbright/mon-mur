@@ -4,6 +4,8 @@
 
 Extension Firefox personnelle qui conserve localement des articles de sources choisies par l’utilisateur.
 
+Voir les [captures d’écran officielles de Mon Mur 5.10.0](docs/screenshots/README.md).
+
 Extension Firefox expérimentale, réalisée par « vibe coding ». Mon Mur fonctionne dans le navigateur, sans compte Mon Mur ni serveur applicatif dédié : les sources RSS/Atom sont collectées et les pages compatibles sont extraites depuis Firefox, puis les données restent dans le profil local. Elle sert à lire et organiser des articles dans des murs thématiques, suivre des sources et sujets, filtrer et conserver des contenus, et retrouver ses J’aime.
 
 
