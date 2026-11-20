@@ -1,4 +1,4 @@
-# Partager et essayer Mon Mur
+# Partager et essayer Mon Mur 5.13.0
 
 ## Ce que contient ce dépôt
 
@@ -6,7 +6,7 @@ Ce dépôt contient Mon Mur à sa racine : manifeste, pages, scripts, `css/`, `i
 
 Les archives générées dans `web-ext-artifacts/` et les fichiers `.xpi` locaux ne font pas partie des sources à commiter. Ne publiez pas de profil Firefox, sauvegarde personnelle, journaux, données de navigation ou secrets. Les paquets se régénèrent depuis les sources.
 
-## Charger la version de travail dans Firefox
+## Tester temporairement depuis les sources dans Firefox
 
 1. Cloner ou télécharger les sources et installer Firefox.
 2. Ouvrir `about:debugging#/runtime/this-firefox`.
@@ -14,29 +14,33 @@ Les archives générées dans `web-ext-artifacts/` et les fichiers `.xpi` locaux
 4. Sélectionner `manifest.json` à la racine du dépôt.
 5. Ouvrir l’extension depuis son bouton ou depuis la page de préférences.
 
-Après une modification, cliquer sur **Recharger** dans `about:debugging` pour charger le code actualisé. Le chargement temporaire disparaît à la fermeture de Firefox. Utiliser un profil de test si l’on souhaite isoler les données; les sources, réglages, favoris et articles collectés sont conservés dans le profil Firefox.
+Après une modification, cliquer sur **Recharger** dans `about:debugging`. Le chargement temporaire est retiré à la fermeture ou au redémarrage de Firefox; il faut alors le charger à nouveau. Utilisez un profil de test si vous souhaitez isoler les données. Les autorisations et les données de l’extension restent gérées par le profil Firefox.
 
-Les autorisations de sites sont accordées par Firefox. Sans accès global, l’extension demande l’accès aux domaines nécessaires au fil des actions. Les recherches facultatives transmises à des services tiers et leur consentement sont décrits dans **Préférences → Données et accès**.
+## Installer une release de manière durable
 
-## Installer une release
+Les releases et leurs fichiers sont publiés sur [GitHub](https://github.com/senatorbright/mon-mur/releases). Le fichier XPI est non signé. Pour le conserver après fermeture et redémarrage, installez-le dans l’un des navigateurs suivants.
 
-Les releases et leurs fichiers sont publiés sur [GitHub](https://github.com/senatorbright/mon-mur/releases). Le XPI publié 5.8.0 est non signé; les paquets 5.9.0 ne sont pas encore construits.
+### Waterfox sur ordinateur
+
+Ouvrez `about:addons`, puis le menu outils et **Installer un module depuis un fichier…**. Sélectionnez le XPI téléchargé et confirmez après avoir vérifié ses permissions. Waterfox accepte les extensions non signées; consultez [l’aide Waterfox sur les extensions non signées](https://www.waterfox.com/support/unsigned-addons/).
 
 ### Firefox Nightly sur ordinateur
 
-Dans Firefox Nightly, ouvrez `about:config`, réglez `xpinstall.signatures.required` sur `false`, puis ouvrez `about:addons`. Dans le menu engrenage, choisissez **Installer un module depuis un fichier…**, sélectionnez le XPI téléchargé et confirmez. Cette préférence concerne le navigateur de bureau.
+Ouvrez `about:config`, réglez `xpinstall.signatures.required` sur `false`, puis ouvrez `about:addons` et choisissez **Installer un module depuis un fichier…** dans le menu engrenage. Sélectionnez le XPI et confirmez. Cette préférence doit rester désactivée tant que l’extension non signée est installée. Voir le [guide Mozilla sur la signature des modules](https://support.mozilla.org/en-US/kb/add-on-signing-in-firefox).
 
 ### Firefox Nightly sur Android
 
-Le XPI non signé peut être installé dans Nightly Android après désactivation de la vérification des signatures. Cette option avancée réduit la protection contre les extensions modifiées : utilisez uniquement un XPI provenant de la release officielle.
+1. Téléchargez le XPI de la release sur le téléphone.
+2. Dans Firefox Nightly, ouvrez `about:config`. Si cette page est indisponible, ouvrez `chrome://geckoview/content/config.xhtml`.
+3. Réglez `xpinstall.signatures.required` sur `false`.
+4. Dans **Paramètres → À propos de Firefox Nightly**, touchez cinq fois le logo pour activer le menu de débogage.
+5. Revenez dans **Paramètres → Installer une extension depuis un fichier**, choisissez le XPI et confirmez.
 
-1. Téléchargez `mon-mur-5.8.0.xpi` sur le téléphone.
-2. Dans Nightly, ouvrez `about:config`. Si cette page n’est pas disponible, ouvrez `chrome://geckoview/content/config.xhtml`.
-3. Recherchez `xpinstall.signatures.required` et réglez la préférence booléenne sur `false`.
-4. Ouvrez **Paramètres → À propos de Firefox Nightly** et touchez cinq fois le logo pour activer le menu de débogage.
-5. Revenez dans **Paramètres → Installer une extension depuis un fichier**, sélectionnez le XPI téléchargé et confirmez.
+La préférence doit rester désactivée tant que l’extension non signée est installée. Après le retrait de l’extension, vous pouvez la remettre à `true`. Cette option avancée réduit la protection contre les extensions modifiées; téléchargez le XPI uniquement depuis la release officielle. Le parcours par ADB d’une version de travail est détaillé dans [Tester Mon Mur sur Android](TESTER-ANDROID.fr.md).
 
-La préférence peut rester désactivée pour que l’extension non signée fonctionne. Pour supprimer Mon Mur, utilisez **Extensions**, puis remettez `xpinstall.signatures.required` à `true`.
+### Firefox standard sur ordinateur
+
+Firefox standard bloque l’installation permanente d’un XPI non signé. Pour un essai, chargez les sources avec `about:debugging` comme indiqué plus haut. Le chargement temporaire disparaît à la fermeture ou au redémarrage de Firefox. Pour une installation durable dans Firefox standard, il faut un XPI signé par Mozilla.
 
 ## Construire les archives locales
 
@@ -56,10 +60,6 @@ Le partage collectif des J’aime avec un mur automatique commun est une idée �
 
 **Licence du projet : GNU GPL v3**, fournie dans `LICENSE`. Les composants tiers et ressources graphiques conservent leurs licences et conditions propres, récapitulées dans `THIRD_PARTY_NOTICES.md` et `amo/ASSET-LICENSES.fr.md`; les visuels de plateforme sans provenance établie ont été remplacés par des pictogrammes originaux sous GPLv3.
 
-## État de la version 5.9.0
+## État de la version 5.13.0
 
-Le manifeste et le changelog source ciblent 5.9.0. Les tests automatisés, `web-ext lint`, la construction des archives et les essais manuels de cette version restent à effectuer. La version installable publiée la plus récente reste la 5.8.0; voir ci-dessous pour ses résultats.
-
-## Version précédente 5.8.0
-
-La version 5.8.0 est publiée en préversion. Les 284 tests automatisés passent. `web-ext lint` rapporte 0 erreur, 0 notice et 16 avertissements à examiner. Les archives ZIP et XPI non signé 5.8.0 sont construites et contrôlées; les essais manuels Firefox restent nécessaires. Sur Firefox Nightly Android, le XPI peut être installé depuis un fichier après désactivation de `xpinstall.signatures.required`; la procédure et la précaution associée sont décrites ci-dessus. Consulter [BUILD-AND-REVIEW.fr.md](amo/BUILD-AND-REVIEW.fr.md) pour l’état des contrôles.
+La release 5.13.0 met à jour les instructions d’installation et d’essai. Le paquet ZIP et le XPI non signé sont joints à la release GitHub. L’installation durable est décrite pour Waterfox et Firefox Nightly sur ordinateur, ainsi que pour Firefox Nightly sur Android; le chargement temporaire sur Firefox standard est réservé aux essais et disparaît à la fermeture du navigateur. Les essais manuels sur les différentes plateformes doivent être réalisés dans chaque navigateur utilisé.

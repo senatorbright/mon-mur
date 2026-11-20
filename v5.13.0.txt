@@ -1,7 +1,14 @@
 # Mon Mur — changelog cumulatif
 Date : 20 novembre 2026
 
-Changelog cumulatif de l’extension Firefox Mon Mur. Ce document rassemble l’historique des versions 1.0.0, 2.0.0, 2.1.0, 2.2.0, 2.3.0, 2.4.0, 2.5.0, 2.6.0, 2.7.0, 2.8.0, 2.9.0, 2.10.0, 2.11.0, 2.12.0, 3.0.0, 3.1.0, 3.2.0, 3.3.0, 3.4.0, 3.5.0, 3.6.0, 3.7.0, 3.8.0, 3.9.0, 3.10.0, 3.11.0, 3.12.0, 3.13.0, 3.14.0, 3.15.0, 3.16.0, 3.17.0, 3.18.0, 4.0.0, 4.1.0, 4.2.0, 4.3.0, 4.4.0, 4.5.0, 4.6.0, 4.7.0, 4.8.0, 4.9.0, 4.10.0, 4.11.0, 4.12.0, 5.0.0, 5.1.0, 5.2.0, 5.3.0, 5.4.0, 5.5.0, 5.6.0, 5.7.0, 5.8.0, 5.9.0, 5.10.0, 5.11.0 et 5.12.0; il remplace les changelogs séparés des versions précédentes.
+Changelog cumulatif de l’extension Firefox Mon Mur. Ce document rassemble l’historique des versions 1.0.0, 2.0.0, 2.1.0, 2.2.0, 2.3.0, 2.4.0, 2.5.0, 2.6.0, 2.7.0, 2.8.0, 2.9.0, 2.10.0, 2.11.0, 2.12.0, 3.0.0, 3.1.0, 3.2.0, 3.3.0, 3.4.0, 3.5.0, 3.6.0, 3.7.0, 3.8.0, 3.9.0, 3.10.0, 3.11.0, 3.12.0, 3.13.0, 3.14.0, 3.15.0, 3.16.0, 3.17.0, 3.18.0, 4.0.0, 4.1.0, 4.2.0, 4.3.0, 4.4.0, 4.5.0, 4.6.0, 4.7.0, 4.8.0, 4.9.0, 4.10.0, 4.11.0, 4.12.0, 5.0.0, 5.1.0, 5.2.0, 5.3.0, 5.4.0, 5.5.0, 5.6.0, 5.7.0, 5.8.0, 5.9.0, 5.10.0, 5.11.0, 5.12.0 et 5.13.0; il remplace les changelogs séparés des versions précédentes.
+
+## Version 5.13.0 — installation et essais documentés
+
+- Réorganisation des instructions pour présenter en premier les installations durables du XPI non signé sur ordinateur : Waterfox et Firefox Nightly.
+- Explication que le Firefox standard n’installe pas durablement un XPI non signé, et description du chargement temporaire pour l’essayer; l’extension temporaire est retirée à la fermeture ou au redémarrage du navigateur.
+- Clarification de la procédure Firefox Nightly sur ordinateur et sur Android, avec des liens vers les consignes officielles de Waterfox et Mozilla.
+- Mise à jour des guides d’installation et des références de version dans le README et les préférences.
 
 ## Version 5.12.0 — remplissage des murs
 

@@ -1,4 +1,4 @@
-# Mon Mur 5.12.0
+# Mon Mur 5.13.0
 
 > Projet personnel, prototype fonctionnel et cahier des charges vivant, réalisé à 100 % par « vibe coding ». Il répondait aux besoins de son auteur; il est partagé pour être lu, repris et amélioré par des personnes qui souhaitent contribuer. Il n’y a pas d’engagement de maintenance ni de feuille de route de nouvelles fonctions. Le code Mon Mur est distribué sous licence GNU GPL v3; les ressources tierces gardent leurs licences et réserves propres, détaillées dans [les avis](THIRD_PARTY_NOTICES.md) et [l’inventaire des ressources](docs/amo/ASSET-LICENSES.fr.md).
 
@@ -10,45 +10,41 @@ Suivez des flux RSS/Atom et des pages compatibles, puis classez les contenus par
 
 Des murs automatiques peuvent repérer des vidéos, des publications de réseaux sociaux et des PDF à partir de vos mots-clés prioritaires. Les filtres permettent aussi d’exclure des termes ou catégories, de masquer certains visages expressifs sur les vignettes et de signaler les indices d’affiliation ou de persuasion dans les contenus.
 
-Voir la [galerie de captures d’écran de Mon Mur 5.10.0](docs/screenshots/README.md); elle illustre une version antérieure et ne présente pas les nouveautés de remplissage des murs de la 5.12.0.
+Voir la [galerie de captures d’écran de Mon Mur 5.10.0](docs/screenshots/README.md); elle illustre une version antérieure.
 
 Extension Firefox expérimentale, réalisée par « vibe coding ». Les autorisations de sites sont gérées par Firefox et peuvent être contrôlées dans **Préférences → Données et accès**.
 
 
-## Installation temporaire
-
-1. Ouvrir `about:debugging#/runtime/this-firefox` dans Firefox.
-2. Choisir **Charger un module complémentaire temporaire…**.
-3. Sélectionner `manifest.json`.
-4. Cliquer sur le bouton de l’extension depuis une page de presse, puis **Suivre cette page**. Firefox demande une autorisation par domaine nécessaire, sauf si l’accès global a été activé dans **Préférences → Accès aux sites**. Si plusieurs flux valides sont détectés, choisir celui à suivre.
-
-Le mur s’ouvre depuis le panneau. Pour utiliser cette copie, rechargez l’extension temporaire en sélectionnant `manifest.json` dans `about:debugging`. Firefox conserve normalement le stockage local associé à l’identifiant défini dans le manifeste; les nouvelles structures sont migrées au premier démarrage. Les pages **Sources**, **J’aime** et **Préférences** sont accessibles dans sa barre de navigation. Les Préférences sont réparties entre **Murs**, **Filtres sémantiques**, **Filtres intelligents** et **Données et accès**; ce dernier onglet présente l’état des autorisations, la fraîcheur et le nombre d’URL mémorisées, l’export CSV et les sauvegardes JSON. La page **J’aime** permet de retrouver les contenus recommandés, de filtrer et trier la liste, et de régler le nombre d’entrées par page. Dans **Préférences → Données et accès**, vous pouvez autoriser tous les sites en une seule fois; sinon Firefox demandera un accès par domaine. Une URL de page ou de flux peut aussi être saisie dans Sources.
-
 ## Installer la version publiée
 
-La version source est 5.12.0. Téléchargez la dernière version installable et ses fichiers depuis [GitHub](https://github.com/senatorbright/mon-mur/releases). Le XPI local est non signé.
+La version source est 5.13.0. Téléchargez le fichier `mon-mur-5.13.0.xpi` depuis la [release GitHub](https://github.com/senatorbright/mon-mur/releases). Le XPI est non signé.
 
-### Sur ordinateur avec Firefox Nightly
+### Installation durable sur ordinateur
 
-1. Dans Firefox Nightly, ouvrez `about:config` et réglez `xpinstall.signatures.required` sur `false`.
-2. Ouvrez `about:addons`, puis le menu engrenage et **Installer un module depuis un fichier…**.
-3. Choisissez le fichier `mon-mur-5.12.0.xpi` téléchargé et confirmez.
+Choisissez l’un de ces navigateurs pour garder l’extension installée après fermeture et redémarrage :
 
-Cette option concerne Nightly sur ordinateur. Remettez la préférence à `true` après l’essai si vous souhaitez réactiver la vérification des signatures.
+- **Waterfox** : ouvrez `about:addons`, ouvrez le menu outils et choisissez **Installer un module depuis un fichier…**. Sélectionnez le XPI téléchargé et confirmez l’installation. Waterfox accepte les extensions non signées; consultez l’aide [Extensions non signées dans Waterfox](https://www.waterfox.com/support/unsigned-addons/).
+- **Firefox Nightly pour ordinateur** : dans `about:config`, réglez `xpinstall.signatures.required` sur `false`. Ouvrez ensuite `about:addons`, choisissez **Installer un module depuis un fichier…** dans le menu engrenage, puis sélectionnez le XPI. La préférence doit rester désactivée tant que l’extension non signée est installée. Mozilla documente cette option pour Nightly dans son [guide sur la signature des modules](https://support.mozilla.org/en-US/kb/add-on-signing-in-firefox).
 
-### Sur smartphone Android avec Firefox Nightly
+Le Firefox standard ne permet pas d’installer durablement ce XPI non signé. Pour l’essayer sans l’installer de manière permanente, suivez la procédure temporaire plus bas dans ce README.
+
+### Installation durable sur smartphone Android avec Firefox Nightly
 
 Le XPI non signé de cette release peut être installé dans Firefox Nightly Android en désactivant la vérification des signatures. Ce réglage réduit la protection contre les extensions modifiées : installez uniquement le fichier téléchargé depuis la release officielle Mon Mur.
 
-1. Téléchargez `mon-mur-5.12.0.xpi` sur le téléphone.
+1. Téléchargez `mon-mur-5.13.0.xpi` sur le téléphone.
 2. Dans Firefox Nightly, ouvrez `about:config`. Si cette adresse n’est pas disponible, ouvrez `chrome://geckoview/content/config.xhtml`.
 3. Recherchez `xpinstall.signatures.required` et réglez cette préférence booléenne sur `false`.
 4. Ouvrez **Paramètres → À propos de Firefox Nightly**, puis touchez le logo Firefox Nightly cinq fois pour activer le menu de débogage.
 5. Revenez dans **Paramètres → Installer une extension depuis un fichier**, choisissez le XPI téléchargé et confirmez.
 
-Ce réglage est propre au profil Nightly. Réactivez la vérification (`true`) après avoir retiré l’extension non signée. Mozilla décrit la procédure d’installation depuis un fichier dans son [guide de distribution](https://extensionworkshop.com/documentation/publish/install-self-distributed/); l’installation non signée est une option avancée de Nightly, distincte du parcours avec XPI signé.
+Ce réglage est propre au profil Nightly et doit rester désactivé tant que l’extension non signée est installée. Après avoir retiré l’extension, vous pouvez le remettre à `true`. Mozilla décrit les exigences de signature dans son [guide de distribution](https://extensionworkshop.com/documentation/publish/install-self-distributed/).
 
 Pour tester dès maintenant le code non signé sur un téléphone, utilisez la méthode développeur temporaire avec ADB décrite dans [Tester Mon Mur sur un téléphone Android](docs/TESTER-ANDROID.fr.md). Mozilla documente les exigences de signature et ces étapes d’installation dans son [guide de distribution des extensions](https://extensionworkshop.com/documentation/publish/install-self-distributed/).
+
+### Tester temporairement dans Firefox standard sur ordinateur
+
+Le chargement temporaire sert à essayer le code sans installer le XPI. Dans Firefox, ouvrez `about:debugging#/runtime/this-firefox`, cliquez sur **Charger un module complémentaire temporaire…** et sélectionnez `manifest.json` à la racine du dépôt. L’extension est retirée à la fermeture ou au redémarrage de Firefox; il faut alors la charger à nouveau. Pour obtenir les instructions de développement et continuer après une modification, consultez [Charger la version de travail dans Firefox](docs/GITHUB-TESTER.fr.md).
 
 Dans l’espace **Découverte**, lancez une recherche DuckDuckGo manuelle par mots-clés ou sujet prioritaire. Les nouveaux flux RSS/Atom vérifiés sont gardés dans la liste **À examiner** entre les recherches et les redémarrages. **Visiter** ouvre le site sans modifier son état; **Marquer comme traitée** mémorise durablement la décision. L’ajout d’une source à un mur la marque aussi comme traitée. La section **Sources traitées** conserve l’historique et permet de rendre un site éligible à une recherche ultérieure. Les doublons sont regroupés par domaine éditorial, en assimilant `www.exemple.fr` et `exemple.fr` tout en gardant les sous-domaines distincts. Firefox demande l’accès à DuckDuckGo et aux domaines qui doivent être vérifiés. Les recherches sont manuelles et locales au navigateur. Les sources traitées et découvertes en attente sont incluses dans les sauvegardes JSON v9; les refus des anciennes sauvegardes sont importés comme sources traitées.
 
@@ -147,4 +143,4 @@ Dans **Préférences → Murs → Murs automatiques**, **Documents PDF en franç
 
 Le projet reste expérimental. Les collectes dépendent des flux et des pages accessibles; le scraping depuis le navigateur peut être limité par les sites ou les autorisations Firefox. Le XPI construit localement est non signé et ne représente pas une validation Mozilla. Les essais manuels Firefox de cette publication restent nécessaires.
 
-Le changelog cumulatif est disponible dans [`v5.12.0.txt`](v5.12.0.txt). Le code Mon Mur est sous GNU GPLv3 ([`LICENSE`](LICENSE)); les ressources tierces conservent leurs licences et l’icône Mon Mur et les pictogrammes génériques introduits en 5.6.0 sont également distribués sous GPLv3.
+Le changelog cumulatif est disponible dans [`v5.13.0.txt`](v5.13.0.txt). Le code Mon Mur est sous GNU GPLv3 ([`LICENSE`](LICENSE)); les ressources tierces conservent leurs licences et l’icône Mon Mur et les pictogrammes génériques introduits en 5.6.0 sont également distribués sous GPLv3.

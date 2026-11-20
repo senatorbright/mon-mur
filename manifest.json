@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mon Mur",
-  "version": "5.12.0",
+  "version": "5.13.0",
   "description": "Des murs thématiques locaux pour organiser les articles de vos sources.",
   "icons": {
     "32": "icons/mon-mur-32.png",

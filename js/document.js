@@ -4,7 +4,7 @@ const documents = {
   changelog: {
     title: "Suivi des évolutions",
     description: "Historique cumulatif des versions et des changements de Mon Mur.",
-    file: "v5.12.0.txt",
+    file: "v5.13.0.txt",
     sourceLabel: "Télécharger le fichier source ↧",
     language: "fr",
     eyebrow: "DOCUMENTATION",
