@@ -624,3 +624,12 @@ bluesky-image-setting{display:flex;align-items:flex-start;gap:9px;margin-top:7px
 .translation-heading{margin-top:20px!important}.language-unknown-option select{margin-left:auto;padding:6px 10px;border:1px solid #687d98;border-radius:8px;background:#17263a;color:#f1f5ff}.language-translation-note{margin:10px 0 0!important;color:#b9c8dc;font-size:12px;line-height:1.5}.language-buttons button:disabled{cursor:default;opacity:.8}.article-translate-action{white-space:nowrap}
 .article-translate-action[hidden]{display:none!important}.article-bottom-tags{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0}.article-bottom-tags .category-tag{display:inline-flex;align-items:center;padding:3px 9px;border:1px solid #354d67;border-radius:999px;background:#203247;color:#c9def5;font-size:11px;line-height:1.45}
 .bluesky-post-card .bluesky-date{flex:1 1 auto;margin-left:0;text-align:center;white-space:nowrap}.article-translate-action[hidden]{display:none!important}
+#emptyLoadOlder{display:block;margin:10px auto 0}#emptyLoadOlder[hidden]{display:none!important}
+
+/* Rendre les demandes d’autorisation de l’accueil immédiatement repérables. */
+.onboarding-choice.needs-action{border-color:color-mix(in srgb,#f05b55 66%,var(--line));border-left:4px solid #ef5a50;background:color-mix(in srgb,var(--surface) 90%,#ef5a50 10%);transition:border-color .25s ease,background-color .25s ease}
+.onboarding-choice.is-granted{border-color:color-mix(in srgb,#28b66b 70%,var(--line));border-left:4px solid #28b66b;background:color-mix(in srgb,var(--surface) 91%,#28b66b 9%);transition:border-color .25s ease,background-color .25s ease}
+.onboarding-choice #onboardingAllowSites,.onboarding-choice #onboardingSearchConsent{border:1px solid #5da7ff;background:linear-gradient(135deg,#1686ff,#0759ca);box-shadow:0 3px 12px #0878ef55;color:#fff;font-weight:750;text-shadow:0 1px 1px #00387566}
+.onboarding-choice #onboardingAllowSites:hover,.onboarding-choice #onboardingSearchConsent:hover{background:linear-gradient(135deg,#39a0ff,#126be0);box-shadow:0 4px 16px #0878ef88;transform:translateY(-1px)}
+.onboarding-choice #onboardingAllowSites:focus-visible,.onboarding-choice #onboardingSearchConsent:focus-visible{outline:3px solid #8bc5ff;outline-offset:3px}
+.onboarding-choice.is-granted #onboardingAllowSites,.onboarding-choice.is-granted #onboardingSearchConsent{border-color:#66d99a;background:linear-gradient(135deg,#28a85f,#168447);box-shadow:0 3px 12px #16844744}

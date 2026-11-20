@@ -1,7 +1,22 @@
 # Mon Mur — changelog cumulatif
-Date : 19 novembre 2026
+Date : 20 novembre 2026
 
-Changelog cumulatif de l’extension Firefox Mon Mur. Ce document rassemble l’historique des versions 1.0.0, 2.0.0, 2.1.0, 2.2.0, 2.3.0, 2.4.0, 2.5.0, 2.6.0, 2.7.0, 2.8.0, 2.9.0, 2.10.0, 2.11.0, 2.12.0, 3.0.0, 3.1.0, 3.2.0, 3.3.0, 3.4.0, 3.5.0, 3.6.0, 3.7.0, 3.8.0, 3.9.0, 3.10.0, 3.11.0, 3.12.0, 3.13.0, 3.14.0, 3.15.0, 3.16.0, 3.17.0, 3.18.0, 4.0.0, 4.1.0, 4.2.0, 4.3.0, 4.4.0, 4.5.0, 4.6.0, 4.7.0, 4.8.0, 4.9.0, 4.10.0, 4.11.0, 4.12.0, 5.0.0, 5.1.0, 5.2.0, 5.3.0, 5.4.0, 5.5.0, 5.6.0, 5.7.0, 5.8.0, 5.9.0 et 5.10.0; il remplace les changelogs séparés des versions précédentes.
+Changelog cumulatif de l’extension Firefox Mon Mur. Ce document rassemble l’historique des versions 1.0.0, 2.0.0, 2.1.0, 2.2.0, 2.3.0, 2.4.0, 2.5.0, 2.6.0, 2.7.0, 2.8.0, 2.9.0, 2.10.0, 2.11.0, 2.12.0, 3.0.0, 3.1.0, 3.2.0, 3.3.0, 3.4.0, 3.5.0, 3.6.0, 3.7.0, 3.8.0, 3.9.0, 3.10.0, 3.11.0, 3.12.0, 3.13.0, 3.14.0, 3.15.0, 3.16.0, 3.17.0, 3.18.0, 4.0.0, 4.1.0, 4.2.0, 4.3.0, 4.4.0, 4.5.0, 4.6.0, 4.7.0, 4.8.0, 4.9.0, 4.10.0, 4.11.0, 4.12.0, 5.0.0, 5.1.0, 5.2.0, 5.3.0, 5.4.0, 5.5.0, 5.6.0, 5.7.0, 5.8.0, 5.9.0, 5.10.0, 5.11.0 et 5.12.0; il remplace les changelogs séparés des versions précédentes.
+
+## Version 5.12.0 — remplissage des murs
+
+- Remplacement de la recherche manuelle dans des périodes anciennes par **Remplir mon mur**, qui récupère les cinq dernières publications datées de chaque source associée au mur.
+- Lorsqu’une source est ajoutée pour la première fois à un mur, ses cinq dernières publications sont récupérées automatiquement.
+- Le remplissage peut réafficher les publications déjà enregistrées et réinitialise leur état « lu »; sur un mur manuel, ces publications restent visibles même au-delà de la durée de conservation, jusqu’à une nouvelle action de lecture.
+- Les filtres de contenu continuent de s’appliquer au remplissage : mots-clés, catégories, affiliation et langue peuvent toujours écarter une publication.
+- Extension du remplissage aux murs automatiques et amélioration des diagnostics pour distinguer résultats reçus, dates exploitables, candidats, contenus déjà enregistrés et motifs de non-affichage.
+
+## Version 5.11.0 — traduction des articles avec Firefox
+
+- Ajout dans **Préférences → Filtres intelligents → Langues des contenus** du choix de langue cible et de l’activation de l’action « Traduire avec Firefox ».
+- L’action ouvre une vue de lecture Mon Mur qui déclare la langue de l’article pour Firefox; la traduction native reste effectuée par Firefox sur l’appareil.
+- Les nouveaux réglages sont conservés avec les préférences et inclus dans les sauvegardes; les lecteurs d’articles reprennent leur contexte de langue.
+- Mise à jour des comportements de collecte et d’affichage des contenus automatiques, avec conservation de la compatibilité des données existantes.
 
 ## Version 5.10.0 — actualisation sociale persistante
 

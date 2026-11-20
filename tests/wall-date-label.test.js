@@ -18,10 +18,10 @@ test("day precision dates do not display an invented publication time", () => {
   assert.doesNotMatch(label, /\d{1,2}:\d{2}/);
 });
 
-test("precise publication dates and discovery fallbacks keep their labels", () => {
+test("precise publication dates keep their label and discovery fallbacks stay unknown", () => {
   const exact = vm.runInContext(`publishedDateLabel({publishedAt:${Date.UTC(2026, 9, 27, 20, 14)}})`, context);
   const fallback = vm.runInContext(`publishedDateLabel({publishedAt:${Date.UTC(2026, 9, 27)},dateIsFallback:true})`, context);
   assert.match(exact, /27 oct\. 2026/);
   assert.match(exact, /\d{1,2}:\d{2}/);
-  assert.match(fallback, /date de découverte/);
+  assert.equal(fallback, "Date de publication inconnue");
 });

@@ -1,4 +1,4 @@
-# Mon Mur 5.10.0
+# Mon Mur 5.12.0
 
 > Projet personnel, prototype fonctionnel et cahier des charges vivant, réalisé à 100 % par « vibe coding ». Il répondait aux besoins de son auteur; il est partagé pour être lu, repris et amélioré par des personnes qui souhaitent contribuer. Il n’y a pas d’engagement de maintenance ni de feuille de route de nouvelles fonctions. Le code Mon Mur est distribué sous licence GNU GPL v3; les ressources tierces gardent leurs licences et réserves propres, détaillées dans [les avis](THIRD_PARTY_NOTICES.md) et [l’inventaire des ressources](docs/amo/ASSET-LICENSES.fr.md).
 
@@ -10,7 +10,7 @@ Suivez des flux RSS/Atom et des pages compatibles, puis classez les contenus par
 
 Des murs automatiques peuvent repérer des vidéos, des publications de réseaux sociaux et des PDF à partir de vos mots-clés prioritaires. Les filtres permettent aussi d’exclure des termes ou catégories, de masquer certains visages expressifs sur les vignettes et de signaler les indices d’affiliation ou de persuasion dans les contenus.
 
-Voir les [captures d’écran officielles de Mon Mur 5.10.0](docs/screenshots/README.md).
+Voir la [galerie de captures d’écran de Mon Mur 5.10.0](docs/screenshots/README.md); elle illustre une version antérieure et ne présente pas les nouveautés de remplissage des murs de la 5.12.0.
 
 Extension Firefox expérimentale, réalisée par « vibe coding ». Les autorisations de sites sont gérées par Firefox et peuvent être contrôlées dans **Préférences → Données et accès**.
 
@@ -26,13 +26,13 @@ Le mur s’ouvre depuis le panneau. Pour utiliser cette copie, rechargez l’ext
 
 ## Installer la version publiée
 
-La version source est 5.10.0. Téléchargez la dernière version installable et ses fichiers depuis [GitHub](https://github.com/senatorbright/mon-mur/releases). Le XPI est non signé.
+La version source est 5.12.0. Téléchargez la dernière version installable et ses fichiers depuis [GitHub](https://github.com/senatorbright/mon-mur/releases). Le XPI local est non signé.
 
 ### Sur ordinateur avec Firefox Nightly
 
 1. Dans Firefox Nightly, ouvrez `about:config` et réglez `xpinstall.signatures.required` sur `false`.
 2. Ouvrez `about:addons`, puis le menu engrenage et **Installer un module depuis un fichier…**.
-3. Choisissez le fichier `mon-mur-5.10.0.xpi` téléchargé et confirmez.
+3. Choisissez le fichier `mon-mur-5.12.0.xpi` téléchargé et confirmez.
 
 Cette option concerne Nightly sur ordinateur. Remettez la préférence à `true` après l’essai si vous souhaitez réactiver la vérification des signatures.
 
@@ -40,7 +40,7 @@ Cette option concerne Nightly sur ordinateur. Remettez la préférence à `true`
 
 Le XPI non signé de cette release peut être installé dans Firefox Nightly Android en désactivant la vérification des signatures. Ce réglage réduit la protection contre les extensions modifiées : installez uniquement le fichier téléchargé depuis la release officielle Mon Mur.
 
-1. Téléchargez `mon-mur-5.10.0.xpi` sur le téléphone.
+1. Téléchargez `mon-mur-5.12.0.xpi` sur le téléphone.
 2. Dans Firefox Nightly, ouvrez `about:config`. Si cette adresse n’est pas disponible, ouvrez `chrome://geckoview/content/config.xhtml`.
 3. Recherchez `xpinstall.signatures.required` et réglez cette préférence booléenne sur `false`.
 4. Ouvrez **Paramètres → À propos de Firefox Nightly**, puis touchez le logo Firefox Nightly cinq fois pour activer le menu de débogage.
@@ -82,6 +82,7 @@ Sur smartphone, la navigation latérale se replie pour laisser toute la largeur 
 - La barre latérale indique le nombre d’articles à lire dans l’ensemble des murs, les sources en erreur, les J’aime, les articles « À consulter plus tard » et les articles archivés.
 - Les onglets des murs affichent le nombre d’articles encore à consulter, mis à jour à chaque actualisation. Les deux murs automatiques sont séparés visuellement des murs personnalisés et signalés « AUTO ». « À consulter plus tard » regroupe les articles et vidéos enregistrés; « Archivés » contient ceux déjà marqués comme lus.
 - Le mur charge 20 cartes par lot, sans requête réseau au défilement. L’actualisation manuelle collecte de nouveaux articles et propose un bouton pour afficher les nouveaux articles sans interrompre la lecture.
+- **Remplir mon mur** récupère les cinq publications datées les plus récentes de chaque source associée. Une source ajoutée à un mur est remplie dès son premier ajout. Cette action peut réafficher des publications déjà enregistrées et réinitialise leur état « lu »; les filtres de mots-clés, catégories, affiliation et langue restent appliqués.
 - Chaque carte peut être dépliée directement dans le mur pour lire l’article complet. Le contenu du flux est utilisé si disponible, sinon la page originale est analysée avec Mozilla Readability. Le HTML est filtré avant affichage et le résultat est mis en cache dans IndexedDB à la première ouverture. Les vidéos HTML5 et lecteurs intégrés reconnus sont proposés dans l’article; le lecteur distant ne se charge qu’après un clic et s’arrête quand la carte est repliée. Une seule vidéo peut jouer à la fois pour un même mur; démarrer une autre arrête le lecteur précédent, y compris entre onglets.
 - Pour le lecteur YouTube, Firefox transmet l’URL réelle `moz-extension://…/wall.html` comme `Referer` au premier chargement de l’iframe. Cette modification est limitée aux iframes `/embed/` de YouTube créées depuis le mur.
 - Les actions « Lu » et « À consulter plus tard » retirent l’article du mur de sources et l’affichent dans les murs automatiques correspondants. La conservation des murs « Archivés » et « À consulter plus tard » se règle séparément dans les préférences; la date d’archivage ou d’enregistrement et la durée correspondante sont affichées sur les cartes. Chaque délai part de la dernière action explicite; consulter l’article ne le renouvelle pas. Un instantané des champs utiles à l’affichage est conservé avec l’état pour que l’article reste visible même s’il disparaît du flux ou de la base d’articles.
@@ -146,4 +147,4 @@ Dans **Préférences → Murs → Murs automatiques**, **Documents PDF en franç
 
 Le projet reste expérimental. Les collectes dépendent des flux et des pages accessibles; le scraping depuis le navigateur peut être limité par les sites ou les autorisations Firefox. Le XPI construit localement est non signé et ne représente pas une validation Mozilla. Les essais manuels Firefox de cette publication restent nécessaires.
 
-Le changelog cumulatif est disponible dans [`v5.10.0.txt`](v5.10.0.txt). Le code Mon Mur est sous GNU GPLv3 ([`LICENSE`](LICENSE)); les ressources tierces conservent leurs licences et l’icône Mon Mur et les pictogrammes génériques introduits en 5.6.0 sont également distribués sous GPLv3.
+Le changelog cumulatif est disponible dans [`v5.12.0.txt`](v5.12.0.txt). Le code Mon Mur est sous GNU GPLv3 ([`LICENSE`](LICENSE)); les ressources tierces conservent leurs licences et l’icône Mon Mur et les pictogrammes génériques introduits en 5.6.0 sont également distribués sous GPLv3.

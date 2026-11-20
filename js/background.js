@@ -126,7 +126,6 @@ browser.permissions.onRemoved.addListener(removed => {
     blueskyRefreshController?.abort(); linkedinRefreshController?.abort(); videoRefreshController?.abort(); archiveSearchController?.abort();
   }
 });
-const VIDEO_REFERENCE_ISO = "2026-10-21T00:00:00+02:00";
 const YOUTUBE_WALL_URL = browser.runtime.getURL("wall.html");
 const YOUTUBE_WALL_ORIGIN = new URL(YOUTUBE_WALL_URL).origin;
 // Firefox omits moz-extension URLs from Referer by default. Forward the real
@@ -270,26 +269,14 @@ function deduplicateArticlesByCanonicalUrl(articles, articleStates, likedUrls) {
 }
 async function cleanExpiredLikes(){const removed=await MMPDB.removeExpiredLikes(Date.now()-LIKE_RETENTION_DAYS*86400000);for(const normalizedUrl of removed)browser.runtime.sendMessage({type:"likesUpdated",normalizedUrl,liked:false}).catch(()=>{});}
 async function clearOrphanedReadingStates(articleIds = [], sourceId = "", incomingRows = []){const removed=new Set(articleIds),keep=new Set(incomingRows.map(row=>row.canonicalUrl)),{articleStates={}}=await browser.storage.local.get({articleStates:{}});let changed=false;for(const [id,item] of Object.entries(articleStates)){const article=item?.article;if(removed.has(id)||(sourceId&&article&&(article.sourceIds||[article.sourceId]).includes(sourceId)&&!keep.has(article.canonicalUrl)&&!(article.sourceIds||[article.sourceId]).some(other=>other!==sourceId))){delete articleStates[id];changed=true;}}if(changed)await browser.storage.local.set({articleStates});}
-const FIRST_COLLECTION_LOOKBACK_MS = 10 * 60 * 60 * 1000;
+async function clearReadStatusesForFill(rows = [], minimumPublishedAt = 0){const ids=new Set(rows.filter(row=>(Number(row?.publishedAt)||0)>=minimumPublishedAt).map(row=>row?.id).filter(Boolean));if(!ids.size)return 0;const {articleStates={}}=await browser.storage.local.get({articleStates:{}});let changed=0;for(const id of ids)if(articleStates[id]?.status==="read"){delete articleStates[id];changed++;}if(changed)await browser.storage.local.set({articleStates});return changed;}
+function configuredLookbackMs(current = null) {
+  const minutes = Number(current?.refreshIntervalMinutes);
+  return (REFRESH_INTERVALS.includes(minutes) ? minutes : DEFAULT_REFRESH_INTERVAL) * 60 * 1000;
+}
 function firstCollectionCutoffs(source, rows, current, cachedArticles, startedAt, unavailableUrls = new Set()) {
   const result = new Map(), walls = (source.wallIds || []).map(id => current.walls.find(wall => wall.id === id)).filter(Boolean);
-  const all = [...cachedArticles, ...rows.filter(article => !unavailableUrls.has(article.canonicalUrl))];
-  for (const wall of walls) {
-    const config = current.wallSettings?.[wall.id] || {}, retention = Math.max(1, Number(config.retentionDays) || 3);
-      const keywords = (current.settings?.excludedKeywords || config.excludedKeywords || []).map(item => typeof item === "string" ? item : item.term).filter(Boolean);
-      const categories = (current.settings?.excludedCategories || config.excludedCategories || []).map(MMP.normalizeText);
-    const eligible = article => {
-      const date = Number(article.publishedAt) || 0;
-      return !article.readingState && date > 0 && !article.dateIsFallback && date >= startedAt - retention * 86400000 &&
-        (article.sourceIds || [article.sourceId]).includes(source.id) &&
-        !keywords.some(term => MMP.matchTerm(`${article.title} ${article.summary || ""}`, term)) &&
-        !(article.categories || []).some(category => categories.includes(MMP.normalizeText(category)));
-    };
-    let hours = 10;
-    const maxHours = Math.min(retention * 24, 72);
-    while (hours < maxHours && !all.some(article => eligible(article) && Number(article.publishedAt) >= startedAt - hours * 3600000)) hours = Math.min(hours + 2, maxHours);
-    result.set(wall.id, startedAt - hours * 3600000);
-  }
+  for (const wall of walls) result.set(wall.id, startedAt - configuredLookbackMs(current));
   return result;
 }
 async function firstCollectionCutoffsFor(source, rows, current, cachedArticles, startedAt) {
@@ -304,12 +291,12 @@ function sourceTimeout(promise, timeout = 15000) {
   let timer;
   return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => { const error = new Error(`Délai maximal de collecte dépassé (${Math.round(timeout / 1000)} s).`); error.kind = "transient"; reject(error); }, timeout); })]).finally(() => clearTimeout(timer));
 }
-async function sourceRowsToPersist(sourceId, rows, lastSuccessfulSync = 0, firstCollectionStartedAt = 0, wallCutoffs = null, diagnostics = null) {
+async function sourceRowsToPersist(sourceId, rows, lastSuccessfulSync = 0, firstCollectionStartedAt = 0, wallCutoffs = null, diagnostics = null, acquiredHistoryOnly = false) {
   const urls = rows.map(row => row.canonicalUrl);
-  const [seen, expired, currentArticles] = await Promise.all([MMPDB.sourceHistory(sourceId, urls), MMPDB.expiredArticleUrls(urls), MMPDB.all()]);
+  const [seen, expired, currentArticles] = await Promise.all([MMPDB.sourceHistory(sourceId, urls, acquiredHistoryOnly), MMPDB.expiredArticleUrls(urls), MMPDB.all()]);
   const stored = new Set(currentArticles.map(article => article.canonicalUrl));
   const cutoff = Number(lastSuccessfulSync) || 0;
-  const firstCollectionCutoff = firstCollectionStartedAt ? firstCollectionStartedAt - FIRST_COLLECTION_LOOKBACK_MS : 0;
+  const firstCollectionCutoff = firstCollectionStartedAt ? firstCollectionStartedAt - (await refreshInterval()) * 60000 : 0;
   const diagnosticUrls = diagnostics ? Object.fromEntries(["alreadyStored", "retentionTombstone", "deduplicated", "outsideInitialWindow", "olderThanLastSync", "eligible"].map(key => [key, new Set()])) : null;
   const classified = rows.map(row => {
     let reason;
@@ -318,8 +305,9 @@ async function sourceRowsToPersist(sourceId, rows, lastSuccessfulSync = 0, first
     else if (seen.has(row.canonicalUrl)) reason = "deduplicated";
     else {
       const publishedAt = Number(row.publishedAt) || 0;
-      if (firstCollectionCutoff) reason = !row.dateIsFallback && publishedAt > 0 && (wallCutoffs?.size ? [...wallCutoffs.values()].some(cutoff => publishedAt >= cutoff) : publishedAt >= firstCollectionCutoff) ? "eligible" : "outsideInitialWindow";
-      else reason = cutoff > 0 && !row.dateIsFallback && publishedAt > 0 && publishedAt <= cutoff ? "olderThanLastSync" : "eligible";
+      if (row.dateIsFallback || !publishedAt || publishedAt > Date.now() || (!acquiredHistoryOnly && row.datePrecision === "day")) reason = "outsideInitialWindow";
+      else if (firstCollectionCutoff) reason = (wallCutoffs?.size ? [...wallCutoffs.values()].some(value => publishedAt >= value) : publishedAt >= firstCollectionCutoff) ? "eligible" : "outsideInitialWindow";
+      else reason = cutoff > 0 && publishedAt <= cutoff ? "olderThanLastSync" : "eligible";
     }
     diagnosticUrls?.[reason]?.add(row.canonicalUrl);
     return { row, reason };
@@ -371,14 +359,14 @@ async function recordAutomaticHistory(sourceId, rows, metadata) {
 async function ensureSocialRefreshBaseline() {
   const stored = await browser.storage.local.get({ socialRefreshBaselineVersion: 0, blueskySearchState: { lastSuccessfulByTopic: {} }, linkedinSearchState: { lastSuccessfulByTopic: {} } });
   if (Number(stored.socialRefreshBaselineVersion) >= SOCIAL_REFRESH_BASELINE_VERSION) return false;
-  const now = Date.now();
+  const now = Date.now(), baselineAt = now - configuredLookbackMs(await state());
   const blueskySearchState = stored.blueskySearchState || { lastSuccessfulByTopic: {} };
   const linkedinSearchState = stored.linkedinSearchState || { lastSuccessfulByTopic: {} };
   blueskySearchState.lastSuccessfulByTopic ||= {};
   blueskySearchState.cursorByTopic = {};
   linkedinSearchState.lastSuccessfulByTopic ||= {};
-  for (const topic of Object.keys(blueskySearchState.lastSuccessfulByTopic)) blueskySearchState.lastSuccessfulByTopic[topic] = now;
-  for (const topic of Object.keys(linkedinSearchState.lastSuccessfulByTopic)) linkedinSearchState.lastSuccessfulByTopic[topic] = now;
+  for (const topic of Object.keys(blueskySearchState.lastSuccessfulByTopic)) blueskySearchState.lastSuccessfulByTopic[topic] = baselineAt;
+  for (const topic of Object.keys(linkedinSearchState.lastSuccessfulByTopic)) linkedinSearchState.lastSuccessfulByTopic[topic] = baselineAt;
   await browser.storage.local.set({ socialRefreshBaselineVersion: SOCIAL_REFRESH_BASELINE_VERSION, blueskySearchState, linkedinSearchState });
   await browser.storage.local.remove(["blueskyCollectionDiagnostics", "linkedinCollectionDiagnostics"]);
   return true;
@@ -1675,16 +1663,17 @@ async function rediscoverSource(source, knownImages, cachedArticles, previousSuc
   }
   return false;
 }
-async function refreshAll(wallId = "", acquisitionMode = "Automatique") {
+async function refreshAll(wallId = "", acquisitionMode = "Automatique", historyWindow = null) {
   if (refreshInFlight) {
-    if (refreshQueued) { refreshQueued.wallId = wallId; refreshQueued.acquisitionMode = acquisitionMode; return refreshQueued.promise; }
-    const queued = { wallId, acquisitionMode, promise: null };
+    if (refreshQueued) { refreshQueued.wallId = wallId; refreshQueued.acquisitionMode = acquisitionMode; refreshQueued.historyWindow = historyWindow; return refreshQueued.promise; }
+    const queued = { wallId, acquisitionMode, historyWindow, promise: null };
     queued.promise = (async () => {
       await refreshInFlight.catch(() => {});
       const nextWallId = queued.wallId;
       const nextMode = queued.acquisitionMode;
+      const nextHistoryWindow = queued.historyWindow;
       if (refreshQueued === queued) refreshQueued = null;
-      return refreshAll(nextWallId, nextMode);
+      return refreshAll(nextWallId, nextMode, nextHistoryWindow);
     })();
     refreshQueued = queued;
     return queued.promise;
@@ -1692,7 +1681,7 @@ async function refreshAll(wallId = "", acquisitionMode = "Automatique") {
   const startedAt = Date.now();
   await browser.storage.local.set({ refreshStatus: { startedAt, completedAt: 0 } });
   refreshInFlight = (async () => {
-    try { return await refreshAllImpl(wallId, acquisitionMode); }
+    try { return await refreshAllImpl(wallId, acquisitionMode, historyWindow); }
     finally {
       const stored = await browser.storage.local.get({ refreshStatus: {} });
       await browser.storage.local.set({ refreshStatus: { ...(stored.refreshStatus || {}), startedAt, completedAt: Date.now() } });
@@ -1785,6 +1774,7 @@ async function rumbleEmbedUrl(value) {
   return embed.href;
 }
 async function refreshYouTubeKeywords(acquisitionMode = "Automatique") {
+  const fillMode = acquisitionMode === "Remplissage du mur";
   if (!await hasSearchTermsConsent()) return { keywordCount: 0, successCount: 0, resultCount: 0, addedCount: 0, errors: [], skippedReason: "search-consent-missing" };
   const current = await state();
   const keywords = MMPY.keywordsFromWalls(current.walls, current.settings);
@@ -1794,17 +1784,20 @@ async function refreshYouTubeKeywords(acquisitionMode = "Automatique") {
   const stored = await browser.storage.local.get({ autoVideoState: null, youtubeSearchState: null, autoVideoMigrationVersion: 0 });
   const youtubeSearchState = stored.autoVideoState || (stored.youtubeSearchState ? { ...stored.youtubeSearchState, seen: Object.fromEntries(Object.entries(stored.youtubeSearchState.seen || {}).map(([id,item]) => [`youtube:${id}`,item])) } : null);
   const now = Date.now();
+  const initialLookbackMs = configuredLookbackMs(current);
   if (!keywords.length) return { keywordCount: 0, successCount: 0, resultCount: 0, addedCount: 0, errors: [], initialized: false };
   const controller = new AbortController(); videoRefreshController = controller;
   const searchState = youtubeSearchState || { seen: {} };
   searchState.seen ||= {};
   if (Number(stored.autoVideoMigrationVersion) < 1) {
-    searchState.referenceAt = Date.parse(VIDEO_REFERENCE_ISO);
-    searchState.referenceIso = VIDEO_REFERENCE_ISO;
+    searchState.referenceAt = now - initialLookbackMs;
+    searchState.referenceIso = new Date(searchState.referenceAt).toISOString();
+    searchState.lastSuccessfulAt = searchState.referenceAt;
     searchState.seen ||= {};
     await browser.storage.local.set({ autoVideoState: searchState, autoVideoMigrationVersion: 1 });
-  } else if (!Number.isFinite(searchState.referenceAt)) { searchState.referenceAt = Date.parse(VIDEO_REFERENCE_ISO); searchState.referenceIso = VIDEO_REFERENCE_ISO; }
+  } else if (!Number.isFinite(searchState.referenceAt)) { searchState.referenceAt = now - initialLookbackMs; searchState.referenceIso = new Date(searchState.referenceAt).toISOString(); }
   searchState.initializedAt = Number(searchState.initializedAt) || searchState.referenceAt;
+  const refreshCutoffAt = fillMode ? now - 30 * 86400000 : Number(searchState.lastSuccessfulAt) || searchState.referenceAt;
   let changed = Number(stored.autoVideoMigrationVersion) < 1 || !stored.autoVideoState;
   let successCount = 0, resultCount = 0, addedCount = 0;
   const errors = [];
@@ -1831,13 +1824,13 @@ async function refreshYouTubeKeywords(acquisitionMode = "Automatique") {
         requestInfo.titleRejected = parseStats.titleRejected;
         diagnostics.youtube.results += parseStats.received;
         diagnostics.youtube.titleRejected += parseStats.titleRejected;
-        const fresh = videos.filter(video => video.publishedAt > searchState.referenceAt);
-        requestInfo.olderDateRejected = videos.filter(video => video.publishedAt > 0 && video.publishedAt <= searchState.referenceAt).length;
+        const fresh = videos.filter(video => video.publishedAt > refreshCutoffAt).slice(0, fillMode ? 5 : undefined);
+        requestInfo.olderDateRejected = videos.filter(video => video.publishedAt > 0 && video.publishedAt <= refreshCutoffAt).length;
         requestInfo.unknownDateRejected = videos.filter(video => !Number.isFinite(video.publishedAt) || video.publishedAt <= 0).length;
         diagnostics.youtube.olderDateRejected += requestInfo.olderDateRejected;
         diagnostics.youtube.unknownDateRejected += requestInfo.unknownDateRejected;
         resultCount += videos.length;
-        for (const video of videos) {
+        for (const video of [...videos].sort((a, b) => Number(b.publishedAt) - Number(a.publishedAt)).slice(0, fillMode ? 5 : undefined)) {
           if (!video.summary) continue;
           const canonicalUrl = `https://www.youtube.com/watch?v=${video.id}`;
           const existing = await MMPDB.get(MMP.stableId(canonicalUrl));
@@ -1845,6 +1838,7 @@ async function refreshYouTubeKeywords(acquisitionMode = "Automatique") {
         }
         const previous = JSON.parse(JSON.stringify(searchState));
         const tracked = MMPY.trackResults(previous, fresh.map(v => ({...v,id:`youtube:${v.id}`})), keyword, now, true);
+        if (fillMode) await clearReadStatusesForFill(fresh.map(video => ({ id: MMP.stableId(`https://www.youtube.com/watch?v=${video.id}`) })));
         diagnostics.youtube.duplicate += tracked.duplicate;
         if (tracked.articles.length) {
           const rows = tracked.articles.map(video => { const videoId = video.id.slice("youtube:".length), canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`; return { id: MMP.stableId(canonicalUrl), sourceId: YOUTUBE_SOURCE_ID, sourceIds: [YOUTUBE_SOURCE_ID], canonicalUrl, title: video.title, summary: video.summary || "", image: video.image, categories: [], publishedAt: video.publishedAt, discoveredAt: now, fetchedAt: now, videoChannelName: video.channelName, youtubeChannelName: video.channelName, youtubeChannelId: video.channelId, youtubeKeyword: video.youtubeKeyword, youtubePublishedLabel: video.publishedLabel, youtubeLive: video.live, videoPlatform: "YouTube" }; });
@@ -1863,7 +1857,7 @@ async function refreshYouTubeKeywords(acquisitionMode = "Automatique") {
         Object.assign(searchState, tracked.state);
         successCount++;
         changed ||= tracked.changed;
-      } catch (error) { errors.push(`${keyword} : ${error.message}`); diagnostics.youtube.errors.push(`${keyword} : ${error.message}`); console.warn(`Recherche YouTube « ${keyword} » : ${error.message}`); }
+      } catch (error) { errors.push(`${keyword} (YouTube) : ${error.message}`); diagnostics.youtube.errors.push(`${keyword} : ${error.message}`); console.warn(`Recherche YouTube « ${keyword} » : ${error.message}`); }
     }
     if (controller.signal.aborted) break;
     if (providers.peertube) {
@@ -1871,7 +1865,7 @@ async function refreshYouTubeKeywords(acquisitionMode = "Automatique") {
       try {
         const historyRows = [];
         const url = new URL("https://search.joinpeertube.org/api/v1/search/videos");
-        url.searchParams.set("search", keyword); url.searchParams.set("startDate", new Date(searchState.referenceAt).toISOString()); url.searchParams.set("sort", "-publishedAt"); url.searchParams.set("count", "100"); url.searchParams.set("languageOneOf", "fr");
+        url.searchParams.set("search", keyword); url.searchParams.set("startDate", new Date(refreshCutoffAt).toISOString()); url.searchParams.set("sort", "-publishedAt"); url.searchParams.set("count", "100"); url.searchParams.set("languageOneOf", "fr");
         const response = await fetch(url.href, { credentials: "omit", headers: { Accept: "application/json" }, signal: AbortSignal.any([controller.signal,AbortSignal.timeout(18000)]) });
         diagnostics.peertube.requests.push({ url: response.url || url.href, status: response.status, contentType: response.headers.get("content-type") || "" });
         if (!response.ok) throw new Error(`L’index PeerTube a répondu HTTP ${response.status}.`);
@@ -1882,8 +1876,9 @@ async function refreshYouTubeKeywords(acquisitionMode = "Automatique") {
         diagnostics.peertube.languageRejected += parseStats.languageRejected;
         diagnostics.peertube.invalidRejected += parseStats.invalidRejected;
         resultCount += videos.length;
-        for (const video of videos) {
+        for (const video of [...videos].sort((a, b) => Number(b.publishedAt) - Number(a.publishedAt)).slice(0, fillMode ? 5 : undefined)) {
           const key = `peertube:${video.id}`;
+          if (fillMode) await clearReadStatusesForFill([{ id: MMP.stableId(video.canonicalUrl) }]);
           if (searchState.seen[key]) { searchState.seen[key].lastSeenAt = now; diagnostics.peertube.duplicate++; continue; }
           const row = { id: MMP.stableId(video.canonicalUrl), sourceId: PEERTUBE_SOURCE_ID, sourceIds: [PEERTUBE_SOURCE_ID], canonicalUrl: video.canonicalUrl, title: video.title, summary: video.summary, image: video.image, categories: [], publishedAt: video.publishedAt, discoveredAt: now, fetchedAt: now, videoChannelName: video.channelName, youtubeKeyword: keyword, youtubePublishedLabel: video.publishedLabel, videoPlatform: "PeerTube" };
           historyRows.push(row);
@@ -1906,7 +1901,7 @@ async function refreshYouTubeKeywords(acquisitionMode = "Automatique") {
         while (page <= Math.min(10, Math.ceil(found / 15)) && !controller.signal.aborted) {
           const url = new URL("https://api.crowdbunker.com/search/posts");
           url.searchParams.set("q", keyword); url.searchParams.set("page", String(page)); url.searchParams.set("perPage", "15"); url.searchParams.set("mediaType", "video");
-          url.searchParams.set("publishedAfter", String(Math.floor(searchState.referenceAt / 1000)));
+          url.searchParams.set("publishedAfter", String(Math.floor(refreshCutoffAt / 1000)));
           const response = await fetch(url.href, { credentials: "omit", headers: { Accept: "application/json" }, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(18000)]) });
           diagnostics.crowdbunker.requests.push({ url: response.url || url.href, status: response.status, contentType: response.headers.get("content-type") || "" });
           if (!response.ok) throw new Error(`CrowdBunker a répondu HTTP ${response.status}.`);
@@ -1918,9 +1913,10 @@ async function refreshYouTubeKeywords(acquisitionMode = "Automatique") {
         }
         videos = [...new Map(videos.map(video => [video.id, video])).values()].sort((a,b) => b.publishedAt - a.publishedAt);
         resultCount += videos.length;
-        for (const video of videos) {
-          if (!video.publishedAt || video.publishedAt <= searchState.referenceAt) continue;
+        for (const video of videos.slice(0, fillMode ? 5 : undefined)) {
+          if (!video.publishedAt || video.publishedAt <= refreshCutoffAt) continue;
           const key = `crowdbunker:${video.id}`;
+          if (fillMode) await clearReadStatusesForFill([{ id: MMP.stableId(video.canonicalUrl) }]);
           if (searchState.seen[key]) { searchState.seen[key].lastSeenAt = now; diagnostics.crowdbunker.duplicate++; continue; }
           const row = { id: MMP.stableId(video.canonicalUrl), sourceId: CROWDBUNKER_SOURCE_ID, sourceIds: [CROWDBUNKER_SOURCE_ID], canonicalUrl: video.canonicalUrl, title: video.title, summary: video.summary, image: video.image, categories: [], publishedAt: video.publishedAt, discoveredAt: now, fetchedAt: now, videoChannelName: video.channelName, youtubeKeyword: keyword, videoPlatform: "CrowdBunker" };
           historyRows.push(row);
@@ -1952,10 +1948,11 @@ async function refreshYouTubeKeywords(acquisitionMode = "Automatique") {
         const matched = videos.filter(video => MMP.matchTerm(video.title, keyword));
         diagnostics.rumble.titleRejected += videos.length - matched.length;
         matched.sort((a,b) => b.publishedAt - a.publishedAt); resultCount += matched.length;
-        for (const video of matched) {
+        for (const video of matched.slice(0, fillMode ? 5 : undefined)) {
           if (!video.publishedAt) { diagnostics.rumble.unknownDateRejected++; continue; }
-          if (video.publishedAt <= searchState.referenceAt) { diagnostics.rumble.olderDateRejected++; continue; }
+          if (video.publishedAt <= refreshCutoffAt) { diagnostics.rumble.olderDateRejected++; continue; }
           const key = `rumble:${video.id}`;
+          if (fillMode) await clearReadStatusesForFill([{ id: MMP.stableId(video.canonicalUrl) }]);
           if (searchState.seen[key]) { searchState.seen[key].lastSeenAt = now; diagnostics.rumble.duplicate++; continue; }
           const row = { id: MMP.stableId(video.canonicalUrl), sourceId: RUMBLE_SOURCE_ID, sourceIds: [RUMBLE_SOURCE_ID], canonicalUrl: video.canonicalUrl, title: video.title, summary: video.summary, image: video.image, categories: [], publishedAt: video.publishedAt, discoveredAt: now, fetchedAt: now, videoChannelName: video.channelName, youtubeKeyword: keyword, videoPlatform: "Rumble" };
           historyRows.push(row);
@@ -2013,6 +2010,7 @@ async function resolveStoredBlueskyLink(article){
   return article;
 }
 async function refreshBluesky(acquisitionMode = "Automatique") {
+  const fillMode = acquisitionMode === "Remplissage du mur";
   if (!await hasSearchTermsConsent()) {
     const result = { enabled: false, topicCount: 0, successCount: 0, addedCount: 0, errors: [], disabledReason: "search-consent-missing" };
     await browser.storage.local.set({ blueskyCollectionDiagnostics: { at: Date.now(), ...result } });
@@ -2040,7 +2038,7 @@ async function refreshBluesky(acquisitionMode = "Automatique") {
   for (const topic of topics) {
     if (controller.signal.aborted) break;
     const key = MMP.normalizeText(topic.term), legacyCursor = sync.cursorByTopic[key] || "";
-    const previous = Number(sync.lastSuccessfulByTopic[key]) || (legacyCursor ? Number(stored.blueskyCollectionDiagnostics?.at) || now : now);
+    const previous = fillMode ? now - 30 * 86400000 : Number(sync.lastSuccessfulByTopic[key]) || (legacyCursor ? Number(stored.blueskyCollectionDiagnostics?.at) || now - configuredLookbackMs(current) : now - configuredLookbackMs(current));
     const since = previous ? new Date(Math.max(0, previous - 5 * 60000)).toISOString() : undefined;
     // Always start at the newest page. Persisted cursors from older versions
     // could otherwise continue an unbounded first-collection backfill.
@@ -2060,6 +2058,7 @@ async function refreshBluesky(acquisitionMode = "Automatique") {
         topicDiagnostics.returned += posts.length; diagnostics.returned += posts.length;
         const rows = [];
         for (const post of posts) {
+          if (fillMode && rows.filter(row => row.blueskyAdult !== true).length >= 5) break;
           const record = post.record || {}, text = String(record.text || "").trim(), uri = String(post.uri || "");
           const publishedAt = Date.parse(record.createdAt || post.indexedAt) || 0;
           if (previous && (!publishedAt || publishedAt <= previous)) { topicDiagnostics.olderDateRejected++; diagnostics.olderDateRejected++; continue; }
@@ -2087,8 +2086,8 @@ async function refreshBluesky(acquisitionMode = "Automatique") {
             discoveredAt: now, fetchedAt: now, blueskyAuthor: post.author?.displayName || handle, blueskyHandle: handle,
             videoChannelName: post.author?.displayName || handle, blueskyTopics: [topic.term], blueskyLink, blueskyLinkTitle: post.embed?.external?.title || "", videoPlatform: "Bluesky" });
         }
-        if (rows.length) { for (const row of rows) if (!knownIds.has(row.id)) { knownIds.add(row.id); addedCount++; topicDiagnostics.stored++; diagnostics.stored++; } else { topicDiagnostics.duplicates++; diagnostics.duplicates++; } await MMPDB.putMany(rows); await recordAutomaticHistory(BLUESKY_SOURCE_ID, rows, automaticHistoryMetadata(BLUESKY_SOURCE_ID, ["auto-bluesky"], acquisitionMode)); await saveAutomaticSocialSnapshots(rows); }
-        if (!data.cursor || data.cursor === cursor) break;
+        if (rows.length) { if(fillMode)await clearReadStatusesForFill(rows);for (const row of rows) if (!knownIds.has(row.id)) { knownIds.add(row.id); addedCount++; topicDiagnostics.stored++; diagnostics.stored++; } else { topicDiagnostics.duplicates++; diagnostics.duplicates++; } await MMPDB.putMany(rows); await recordAutomaticHistory(BLUESKY_SOURCE_ID, rows, automaticHistoryMetadata(BLUESKY_SOURCE_ID, ["auto-bluesky"], acquisitionMode)); await saveAutomaticSocialSnapshots(rows); }
+        if ((fillMode && rows.filter(row => row.blueskyAdult !== true).length >= 5) || !data.cursor || data.cursor === cursor) break;
         cursor = data.cursor;
       }
       sync.lastSuccessfulByTopic[key] = now;
@@ -2109,6 +2108,7 @@ function linkedinTopics(current) {
     .filter((term, index, values) => values.findIndex(value => MMP.normalizeText(value) === MMP.normalizeText(term)) === index);
 }
 async function refreshLinkedInNews(acquisitionMode = "Automatique") {
+  const fillMode = acquisitionMode === "Remplissage du mur";
   const current = await state(), allTopics = linkedinTopics(current), topics = allTopics.slice(0, 8);
   const automaticEnabled = current.automaticWalls.bluesky === true, providerEnabled = current.socialProviders.linkedin === true;
   const base = { at: Date.now(), automaticEnabled, providerEnabled, imageRequired: false, queryWindow: "7d", attempted: false };
@@ -2130,7 +2130,7 @@ async function refreshLinkedInNews(acquisitionMode = "Automatique") {
   for (const keyword of topics) {
     if (controller.signal.aborted) break;
     try {
-      const topicKey = MMP.normalizeText(keyword), previous = Number(sync.lastSuccessfulByTopic[topicKey]) || legacyPrevious || now;
+      const topicKey = MMP.normalizeText(keyword), previous = fillMode ? now - 8 * 86400000 : Number(sync.lastSuccessfulByTopic[topicKey]) || legacyPrevious || now - configuredLookbackMs(current);
       const url = MMPL.queryUrl(keyword), response = await fetch(url, { credentials: "omit", headers: { Accept: "application/rss+xml, application/xml, text/xml" }, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) });
       if (!response.ok) throw new Error(`Google Actualités a répondu HTTP ${response.status}.`);
       const xml = await response.text();
@@ -2139,7 +2139,9 @@ async function refreshLinkedInNews(acquisitionMode = "Automatique") {
       result.queryCount++; result.resultCount += items.length;
       result.queries.push({ keyword, status: response.status, received: items.length });
       const additions = [];
+      let acceptedForTopic = 0;
       for (const item of items) {
+        if (fillMode && acceptedForTopic >= 5) break;
         // Google News can return loose matches for short acronyms. RSS does
         // not expose the post body, so only attribute/store a hit when the
         // visible result title contains the complete priority term.
@@ -2154,6 +2156,7 @@ async function refreshLinkedInNews(acquisitionMode = "Automatique") {
           existing.linkedinKeywords = [...new Set([...(existing.linkedinKeywords || []), keyword])];
           additions.push({ ...existing, sourceId: LINKEDIN_SOURCE_ID, linkedinKeywords: existing.linkedinKeywords });
           result.duplicates++;
+          acceptedForTopic++;
           continue;
         }
         const id = MMP.stableId(item.googleNewsGuid || item.canonicalUrl);
@@ -2173,8 +2176,9 @@ async function refreshLinkedInNews(acquisitionMode = "Automatique") {
         } else {
           additions.push(row); rowsById.set(id, row); rowsByDedupe.set(dedupeKey, row); result.stored++;
         }
+        acceptedForTopic++;
       }
-      if (additions.length) { await MMPDB.putMany(additions); await recordAutomaticHistory(LINKEDIN_SOURCE_ID, additions, automaticHistoryMetadata(LINKEDIN_SOURCE_ID, ["auto-bluesky"], acquisitionMode)); await saveAutomaticSocialSnapshots(additions); }
+      if (additions.length) { if(fillMode)await clearReadStatusesForFill(additions);await MMPDB.putMany(additions); await recordAutomaticHistory(LINKEDIN_SOURCE_ID, additions, automaticHistoryMetadata(LINKEDIN_SOURCE_ID, ["auto-bluesky"], acquisitionMode)); await saveAutomaticSocialSnapshots(additions); }
       sync.lastSuccessfulByTopic[topicKey] = now;
       successfulTopics++;
     } catch (error) {
@@ -2192,6 +2196,7 @@ function iaField(value) { return Array.isArray(value) ? value.map(item => String
 function iaTimestamp(value) { const parsed = Date.parse(iaField(value)); return Number.isFinite(parsed) ? parsed : 0; }
 function iaIsFrench(value) { const languages=(Array.isArray(value)?value:String(value||"").split(/[;,]/)).map(item=>String(item||"").trim().toLocaleLowerCase("fr")).filter(Boolean); return languages.length>0&&languages.every(language=>/^(?:fr|fre|fra|french|français|francais)(?:\s*\([^)]*\))?$/i.test(language)); }
 async function refreshInternetArchive(wallId = "", acquisitionMode = "Automatique") {
+  const fillMode = acquisitionMode === "Remplissage du mur";
   if (!await hasSearchTermsConsent()) {
     const result = { enabled: false, keywordCount: 0, attempted: false, searches: 0, results: 0, stored: 0, errors: [], skippedReason: "search-consent-missing" };
     await browser.storage.local.set({ internetArchiveCollectionDiagnostics: { at: Date.now(), ...result } });
@@ -2217,7 +2222,7 @@ async function refreshInternetArchive(wallId = "", acquisitionMode = "Automatiqu
   result.attempted = true;
   await browser.storage.local.set({ internetArchiveState: { ...sync, seen, lastAttemptAt: now } });
   const controller = new AbortController(); archiveSearchController = controller;
-  const metadataTimeout = () => AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]), storeForWalls = async (entry, wallIds, keyword) => { const sourceId = `${INTERNET_ARCHIVE_SOURCE_PREFIX}documents`, row = { ...entry, sourceId, sourceIds: [sourceId], archiveKeyword: keyword }; await MMPDB.putMany([row]); await recordAutomaticHistory(sourceId, [row], automaticHistoryMetadata(sourceId, [...wallIds], acquisitionMode)); };
+  const metadataTimeout = () => AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]), storeForWalls = async (entry, wallIds, keyword) => { const sourceId = `${INTERNET_ARCHIVE_SOURCE_PREFIX}documents`, row = { ...entry, sourceId, sourceIds: [sourceId], archiveKeyword: keyword }; if(fillMode)await clearReadStatusesForFill([row]);await MMPDB.putMany([row]); await recordAutomaticHistory(sourceId, [row], automaticHistoryMetadata(sourceId, [...wallIds], acquisitionMode)); };
   for (const { keyword, walls } of [...queries.values()].slice(0, 8)) {
     if (controller.signal.aborted || !await hasSearchTermsConsent()) break;
     const escaped = keyword.replace(/[\\+\-&|!(){}\[\]^"~*?:]/g, "\\$&"), url = new URL("https://archive.org/advancedsearch.php");
@@ -2238,7 +2243,7 @@ async function refreshInternetArchive(wallId = "", acquisitionMode = "Automatiqu
         const identifier = String(doc?.identifier || "").trim(), title = iaField(doc?.title), publicAt = iaTimestamp(doc?.publicdate);
         if (!identifier || doc.mediatype !== "texts") { result.invalidResultRejected++; continue; }
         if (!title || !MMP.matchTerm(title, keyword)) { result.titleRejected++; continue; }
-        if (seen[identifier]?.article?.documentLanguage === "fr") { await storeForWalls(seen[identifier].article, walls, keyword); result.duplicates++; accepted++; if (accepted >= 3) break; continue; }
+        if (seen[identifier]?.article?.documentLanguage === "fr") { await storeForWalls(seen[identifier].article, walls, keyword); result.duplicates++; accepted++; if (accepted >= (fillMode ? 5 : 3)) break; continue; }
         if (seen[identifier] && !seen[identifier].article && (!seen[identifier].retryAfter || seen[identifier].retryAfter > now)) { result.duplicates++; result.cachedRejected++; continue; }
         if (metadataLookups >= 5) break;
         metadataLookups++;
@@ -2257,7 +2262,7 @@ async function refreshInternetArchive(wallId = "", acquisitionMode = "Automatiqu
           const entry = { id: MMP.stableId(canonicalUrl), canonicalUrl, title, summary, image: `https://archive.org/services/img/${encodeURIComponent(identifier)}`, categories: [], publishedAt: publicAt || now, discoveredAt: now, fetchedAt: now, dateIsFallback: !publicAt, documentKind: "pdf", documentLanguage: "fr", documentUrl: pdfUrl, documentAuthor: authors, documentDate: itemDate || 0, archiveDate: publicAt || 0, archiveIdentifier: identifier };
           await storeForWalls(entry, walls, keyword);
           seen[identifier] = { at: now, publicAt, article: entry }; accepted++; result.stored++;
-          if (accepted >= 3) break;
+          if (accepted >= (fillMode ? 5 : 3)) break;
         } catch (error) {
           result.errors.push(`${keyword} · ${identifier} : ${error.message}`);
         }
@@ -2270,7 +2275,9 @@ async function refreshInternetArchive(wallId = "", acquisitionMode = "Automatiqu
   await browser.storage.local.set({ internetArchiveCollectionDiagnostics: { at: now, ...result } });
   return result;
 }
-async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique") {
+async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique", historyWindow = null) {
+  const latestPerSource = Number.isInteger(historyWindow?.latestPerSource) ? Math.max(1, Math.min(20, historyWindow.latestPerSource)) : 0;
+  const historySlice = !!historyWindow && !latestPerSource;
   const current = await state(), { sources, settings } = current, active = sources.filter(s => (s.enabled || (s.method === "html" && s.extractionProfile?.kind === "publication" && s.extractionProfile?.refreshable === false)) && (!wallId || (s.wallIds || []).includes(wallId)));
   const progress = { startedAt: Date.now(), completedAt: 0, totalSources: active.length, processedSources: 0, succeededSources: 0, failedSources: 0, currentSourceIds: [] };
   let progressWrites = Promise.resolve();
@@ -2293,26 +2300,31 @@ async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique") {
     throw error;
   }
   const knownImages = new Map(cachedArticles.filter(a => a.image).map(a => [a.canonicalUrl, a.image]));
+  let historyAddedCount = 0;
+  const historyReturnedUrls = new Set(), historyKnownUrls = new Set(), historyAddedIds = new Set();
+  const latestFillSources = [];
   {
     const batch = active;
     progress.currentSourceIds = [];
     await persistProgress();
     for (const source of batch) {
-      let previousSuccessfulSync = Number(source.lastSuccessfulSync) || 0;
-      let firstCollectionStartedAt = 0;
+      let previousSuccessfulSync = historyWindow ? 0 : Number(source.lastSuccessfulSync) || 0;
+      let firstCollectionStartedAt = historySlice ? Number(historyWindow.upperBound) : 0;
       let attemptAt = 0, attemptStage = "préparation et accès", attemptResult = null, attemptRows = null, attemptKnownSourceUrls = null, attemptPersistenceDiagnostics = null, attemptStorageCompleted = false;
       const sourceDeadlineAt = Date.now() + 15000, remainingSourceTime = () => Math.max(0, sourceDeadlineAt - Date.now());
+      if (!historyWindow && !previousSuccessfulSync && !Number(source.firstCollectionBaselineAt)) source.firstCollectionBaselineAt = Date.now();
       progress.currentSourceIds = [source.id];
       await persistProgress();
       try {
-        previousSuccessfulSync ||= Number(await MMPDB.sourceSync(source.id)) || Number(source.lastSync) || 0;
-        if (!previousSuccessfulSync) firstCollectionStartedAt = Date.now();
+        if (!historyWindow) previousSuccessfulSync ||= Number(await MMPDB.sourceSync(source.id)) || Number(source.lastSync) || 0;
+        if (!previousSuccessfulSync) firstCollectionStartedAt = Number(source.firstCollectionBaselineAt) || Date.now();
+        if (historySlice) firstCollectionStartedAt = Number(historyWindow.upperBound);
         const needs = source.method === "html" ? source.pageUrl : source.feedUrl;
         if (!await accessible(needs)) throw new Error("Autorisation du domaine révoquée");
         attemptAt = markSourceAttempt(source);
         attemptStage = "récupération et extraction";
         const needsFeedRecovery = !source.enabled && source.method === "html" && source.extractionProfile?.kind === "publication" && source.extractionProfile?.refreshable === false;
-        if (needsFeedRecovery) {
+        if (needsFeedRecovery && !historyWindow) {
           const recovered = await rediscoverSource(source, knownImages, cachedArticles, previousSuccessfulSync, firstCollectionStartedAt, sourceDeadlineAt, acquisitionMode);
           if (!recovered) throw new Error(source.lastRediscoveryResult || "Aucune liste actualisable détectée pour cette page.");
         } else {
@@ -2326,31 +2338,62 @@ async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique") {
           const result = await sourceTimeout(fetchSource(source, knownImages, cachedArticles, sourceCinemaPolicy(source,current)), remainingSourceTime()), now = Date.now();
           attemptResult = result;
           if (result.error) {
+            if (latestPerSource) latestFillSources.push({ sourceId: source.id, name: source.name, receivedCount: 0, foundCount: 0, addedCount: 0, error: result.error });
             source.status = "error"; source.lastError = result.error; source.lastAttemptAt = attemptAt;
             source.lastAcquisitionDiagnostics = sourceAcquisitionDiagnostic({ attemptedAt: attemptAt, finishedAt: now, outcome: "error", method: source.method, result, stage: "réception ou analyse" });
             if (result.diagnostics) source.lastExtractionDiagnostics = result.diagnostics;
             if (result.kind === "strategy") source.strategyFailures = (Number(source.strategyFailures) || 0) + 1;
             const knownHtmlCatalog = source.method === "html" && knownPublisherFeedCandidates(source.pageUrl).length > 0;
             const recoveryDue = (knownHtmlCatalog && !source.publisherFeedRecoveryAttempted) || (source.strategyFailures >= 3 && now - (Number(source.lastRediscoveryAt) || 0) >= 86400000);
-            if (recoveryDue && remainingSourceTime() > 0) { if (knownHtmlCatalog) source.publisherFeedRecoveryAttempted = true; await rediscoverSource(source, knownImages, cachedArticles, previousSuccessfulSync, firstCollectionStartedAt, sourceDeadlineAt, acquisitionMode); }
+            if (!historyWindow && recoveryDue && remainingSourceTime() > 0) { if (knownHtmlCatalog) source.publisherFeedRecoveryAttempted = true; await rediscoverSource(source, knownImages, cachedArticles, previousSuccessfulSync, firstCollectionStartedAt, sourceDeadlineAt, acquisitionMode); }
           } else {
             attemptStage = "filtrage de première collecte";
-            const wallCutoffs = await firstCollectionCutoffsFor(source, result.articles, current, cachedArticles, firstCollectionStartedAt);
+            const datedArticles = latestPerSource ? [...result.articles].filter(row => !row.dateIsFallback && Number(row.publishedAt) > 0 && Number(row.publishedAt) <= now).sort((a, b) => Number(b.publishedAt) - Number(a.publishedAt)) : result.articles;
+            const selectedArticles = latestPerSource ? datedArticles.slice(0, latestPerSource) : result.articles;
+            const wallCutoffs = historySlice ? new Map([[wallId, Number(historyWindow.lowerBound)]]) : latestPerSource ? new Map([[wallId, 0]]) : null;
             const persistenceDiagnostics = {};
-            const rows = await sourceRowsToPersist(source.id, [...result.articles, ...(result.imageUpdates || [])], previousSuccessfulSync, firstCollectionStartedAt, wallCutoffs, persistenceDiagnostics);
+            let rows = await sourceRowsToPersist(source.id, [...selectedArticles, ...(result.imageUpdates || [])], previousSuccessfulSync, firstCollectionStartedAt, wallCutoffs, persistenceDiagnostics, !!historyWindow);
+            if (historySlice) rows = rows.filter(row => Number(row.publishedAt) >= Number(historyWindow.lowerBound) && Number(row.publishedAt) < Number(historyWindow.upperBound));
+            if (latestPerSource) {
+              const knownUrls = new Set(cachedArticles.map(article => article.canonicalUrl));
+              const addedCount = rows.filter(row => !knownUrls.has(row.canonicalUrl)).length;
+              latestFillSources.push({
+                sourceId: source.id, name: source.name, receivedCount: result.articles.length,
+                datedCount: datedArticles.length, candidateCount: selectedArticles.length,
+                storedCount: rows.length, alreadyStoredCount: rows.filter(row => knownUrls.has(row.canonicalUrl)).length,
+                addedCount, excluded: { ...persistenceDiagnostics }, canonicalUrls: selectedArticles.map(row => row.canonicalUrl)
+              });
+              await clearReadStatusesForFill(selectedArticles);
+            }
             attemptRows = rows;
             attemptPersistenceDiagnostics = persistenceDiagnostics;
             const knownSourceUrls = await MMPDB.sourceHistory(source.id, result.articles.map(row => row.canonicalUrl));
             attemptKnownSourceUrls = [...knownSourceUrls];
+            if (historySlice) {
+              const windowArticles = result.articles.filter(row => {
+                const publishedAt = Number(row.publishedAt) || 0;
+                return !row.dateIsFallback && row.datePrecision !== "day" && publishedAt >= Number(historyWindow.lowerBound) && publishedAt < Number(historyWindow.upperBound) && publishedAt <= now;
+              });
+              const cachedUrls = new Set(cachedArticles.map(article => article.canonicalUrl));
+              for (const row of windowArticles) {
+                historyReturnedUrls.add(row.canonicalUrl);
+                if (cachedUrls.has(row.canonicalUrl) || knownSourceUrls.has(row.canonicalUrl)) historyKnownUrls.add(row.canonicalUrl);
+              }
+            }
             attemptStage = "stockage des articles";
             await MMPDB.putMany(rows);
+        if (historyWindow) {
+              const knownIds = new Set(cachedArticles.map(article => article.id));
+              for (const row of rows) if (!knownIds.has(row.id) && !historyAddedIds.has(row.id)) historyAddedIds.add(row.id);
+              historyAddedCount = historyAddedIds.size;
+            }
             attemptStorageCompleted = true;
             attemptStage = "historique des URL";
             await MMPDB.rememberSourceArticles(source.id, result.articles, { ...sourceHistoryMetadata(source, result.method, acquisitionMode), acquiredCanonicalUrls: rows.map(row => row.canonicalUrl) });
             source.lastAcquisitionDiagnostics = sourceAcquisitionDiagnostic({ attemptedAt: attemptAt, finishedAt: Date.now(), outcome: "success", method: result.method, result, selectedRows: rows, knownSourceUrls: [...knownSourceUrls], persistenceDiagnostics, storageCompleted: true, stage: "mémorisation" });
             attemptStage = "finalisation de synchronisation";
-            source.lastSuccessfulSync = now; await MMPDB.setSourceSync(source.id, now);
-            source.lastSync = now;
+            if (!historyWindow) { source.lastSuccessfulSync = now; await MMPDB.setSourceSync(source.id, now); source.lastSync = now; }
+            if (!historyWindow) delete source.firstCollectionBaselineAt;
             if (result.method === "html") await clearOrphanedReadingStates(await MMPDB.reconcileSourceArticles(source.id, result.articles), source.id, result.articles);
             source.method = result.method; source.status = "ok"; source.lastError = ""; source.strategyFailures = 0;
             source.extractionProfile = result.extractionProfile || null;
@@ -2360,6 +2403,7 @@ async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique") {
           }
         }
       } catch (e) {
+        if (latestPerSource && !latestFillSources.some(item => item.sourceId === source.id)) latestFillSources.push({ sourceId: source.id, name: source.name, receivedCount: 0, foundCount: 0, addedCount: 0, error: e.message });
         source.status = "error"; source.lastError = e.message; if (!attemptAt) attemptAt = Date.now(); source.lastAttemptAt = attemptAt;
         source.lastAcquisitionDiagnostics = sourceAcquisitionDiagnostic({ attemptedAt: attemptAt, finishedAt: Date.now(), outcome: "error", method: source.method, result: attemptResult, selectedRows: attemptRows, knownSourceUrls: attemptKnownSourceUrls, persistenceDiagnostics: attemptPersistenceDiagnostics, storageCompleted: attemptStorageCompleted, stage: attemptStage, error: e.message });
         if (e.diagnostics) source.lastExtractionDiagnostics = e.diagnostics;
@@ -2367,7 +2411,7 @@ async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique") {
         const now = Date.now();
         const knownHtmlCatalog = source.method === "html" && knownPublisherFeedCandidates(source.pageUrl).length > 0;
         const recoveryDue = (knownHtmlCatalog && !source.publisherFeedRecoveryAttempted) || (source.strategyFailures >= 3 && now - (Number(source.lastRediscoveryAt) || 0) >= 86400000);
-        if (recoveryDue && remainingSourceTime() > 0) { if (knownHtmlCatalog) source.publisherFeedRecoveryAttempted = true; await rediscoverSource(source, knownImages, cachedArticles, previousSuccessfulSync, firstCollectionStartedAt, sourceDeadlineAt, acquisitionMode); }
+        if (!historyWindow && recoveryDue && remainingSourceTime() > 0) { if (knownHtmlCatalog) source.publisherFeedRecoveryAttempted = true; await rediscoverSource(source, knownImages, cachedArticles, previousSuccessfulSync, firstCollectionStartedAt, sourceDeadlineAt, acquisitionMode); }
       } finally {
         progress.processedSources++;
         if (source.status === "error") progress.failedSources++;
@@ -2376,6 +2420,11 @@ async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique") {
         await persistProgress();
       }
     }
+  }
+  if (historyWindow) {
+    await browser.storage.local.set({ sources });
+    browser.runtime.sendMessage({ type: "articlesUpdated" }).catch(() => {});
+    return { sources, historyAddedCount, historyReturnedCount: historyReturnedUrls.size, historyKnownCount: historyKnownUrls.size, historyFailedCount: progress.failedSources, latestFillSources };
   }
   try {
     // Revisit stored items too: many RSS sources drop older entries before
@@ -2400,12 +2449,76 @@ async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique") {
   const protectedUnreadAutomaticIds = (await MMPDB.all())
     .filter(article => articleStates[article.id]?.status !== "read" && (article.sourceIds || [article.sourceId]).some(id => automaticSourceIds.has(id)))
     .map(article => article.id);
-  await MMPDB.removeOlderThan(cutoff, [], protectedUnreadAutomaticIds);
+  const wallFillOverrideIds = Object.values(current.wallFillOverrides || {}).flatMap(overrides => Object.entries(overrides || {}).filter(([, enabled]) => enabled === true).map(([articleId]) => articleId));
+  await MMPDB.removeOlderThan(cutoff, [], [...new Set([...protectedUnreadAutomaticIds, ...wallFillOverrideIds])]);
   await saveAutomaticSocialSnapshots();
   await cleanExpiredLikes();
   await browser.storage.local.set({ sources });
   browser.runtime.sendMessage({ type: "articlesUpdated" }).catch(() => {});
   return { sources, youtube, bluesky, linkedin, internetArchive };
+}
+async function fillWallWithLatestArticles(wallId) {
+  const current = await state();
+  const automaticWall = current.autoWalls.find(wall => wall.id === wallId);
+  if (automaticWall) {
+    let results = [];
+    if (automaticWall.kind === "youtube") {
+      const result = await refreshYouTubeKeywords("Remplissage du mur");
+      results = [{ name: "Vidéos auto", receivedCount: result.resultCount || 0, foundCount: result.resultCount || 0, addedCount: result.addedCount || 0, error: result.errors?.[0] || result.skippedReason || "" }];
+    } else if (automaticWall.kind === "bluesky") {
+      const bluesky = await refreshBluesky("Remplissage du mur"), linkedin = await refreshLinkedInNews("Remplissage du mur");
+      results = [
+        { name: "Bluesky", receivedCount: bluesky.diagnostics?.returned || 0, foundCount: bluesky.diagnostics?.stored || 0, addedCount: bluesky.addedCount || 0, error: bluesky.errors?.[0] || bluesky.disabledReason || "" },
+        { name: "LinkedIn", receivedCount: linkedin.resultCount || 0, foundCount: linkedin.resultCount || 0, addedCount: linkedin.stored || 0, error: linkedin.errors?.[0] || linkedin.disabledReason || "" }
+      ];
+    } else if (automaticWall.kind === "documents") {
+      const result = await refreshInternetArchive("auto-documents", "Remplissage du mur");
+      results = [{ name: "PDF auto", receivedCount: result.results || 0, foundCount: result.stored || 0, addedCount: result.stored || 0, error: result.errors?.[0] || result.skippedReason || "" }];
+    } else throw new Error("Ce mur automatique ne peut pas être rempli depuis les sources.");
+    const providerIds = automaticWall.kind === "youtube"
+      ? [YOUTUBE_SOURCE_ID, PEERTUBE_SOURCE_ID, CROWDBUNKER_SOURCE_ID, RUMBLE_SOURCE_ID]
+      : automaticWall.kind === "bluesky" ? [BLUESKY_SOURCE_ID, LINKEDIN_SOURCE_ID]
+      : [`${INTERNET_ARCHIVE_SOURCE_PREFIX}documents`];
+    const storedArticles = await MMPDB.all(), articleIds = [], retentionDays = Math.max(1, ...Object.values(current.wallSettings || {}).map(item => Number(item.retentionDays) || 3)), retentionCutoff = Date.now() - retentionDays * 86400000, currentBySource = {};
+    for (const sourceId of providerIds) {
+      const selected = storedArticles.filter(article => (article.sourceIds || [article.sourceId]).includes(sourceId) && !article.dateIsFallback && Number(article.publishedAt) >= retentionCutoff)
+        .sort((a, b) => Number(b.publishedAt) - Number(a.publishedAt)).slice(0, 5);
+      await clearReadStatusesForFill(selected, retentionCutoff);
+      articleIds.push(...selected.map(article => article.id));
+      currentBySource[sourceId] = selected.length;
+    }
+    if (automaticWall.kind === "youtube") results[0].currentCount = Object.values(currentBySource).reduce((total, count) => total + count, 0);
+    else if (automaticWall.kind === "bluesky") { results[0].currentCount = currentBySource[BLUESKY_SOURCE_ID] || 0; results[1].currentCount = currentBySource[LINKEDIN_SOURCE_ID] || 0; }
+    else results[0].currentCount = currentBySource[`${INTERNET_ARCHIVE_SOURCE_PREFIX}documents`] || 0;
+    browser.runtime.sendMessage({ type: "articlesUpdated" }).catch(() => {});
+    return { automatic: true, sourceResults: results, articleIds, foundCount: results.reduce((total, item) => total + item.foundCount, 0), addedCount: results.reduce((total, item) => total + item.addedCount, 0), failed: results.some(item => !!item.error) };
+  }
+  if (!current.walls.some(wall => wall.id === wallId)) throw new Error("Mur introuvable.");
+  const sources = current.sources.filter(source => source.enabled && (source.wallIds || []).includes(wallId));
+  if (!sources.length) return { addedCount: 0, foundCount: 0, failed: false, sourceResults: [] };
+  const result = await refreshAll(wallId, "Remplissage du mur", { latestPerSource: 5 });
+  const sourceResults = result.latestFillSources || [], selectedUrls = new Set(sourceResults.flatMap(item => item.canonicalUrls || []));
+  const storedArticles = await MMPDB.all(), articleIds = storedArticles.filter(article => selectedUrls.has(article.canonicalUrl)).map(article => article.id);
+  const storedOverrides = await browser.storage.local.get({ wallFillOverrides: {} }), overrides = { ...(storedOverrides.wallFillOverrides || {}) }, currentOverrides = { ...(overrides[wallId] || {}) };
+  for (const articleId of articleIds) { delete currentOverrides[articleId]; currentOverrides[articleId] = true; }
+  overrides[wallId] = Object.fromEntries(Object.entries(currentOverrides).filter(([, enabled]) => enabled === true).slice(-100));
+  await browser.storage.local.set({ wallFillOverrides: overrides });
+  return { addedCount: result.historyAddedCount || 0, foundCount: sourceResults.reduce((total, item) => total + (item.candidateCount || 0), 0), articleIds, failed: Number(result.historyFailedCount) > 0, sourceResults };
+}
+async function resetCollectionBaselines() {
+  const baselineAt = Date.now() - (await refreshInterval()) * 60000;
+  const stored = await browser.storage.local.get({ sources: [], autoVideoState: { seen: {} }, blueskySearchState: { lastSuccessfulByTopic: {} }, linkedinSearchState: { lastSuccessfulByTopic: {} }, internetArchiveState: { seen: {} } });
+  const sources = (stored.sources || []).map(source => ({ ...source, lastSync: baselineAt, lastSuccessfulSync: baselineAt }));
+  const autoVideoState = { ...(stored.autoVideoState || {}), referenceAt: baselineAt, referenceIso: new Date(baselineAt).toISOString(), lastSuccessfulAt: baselineAt };
+  const blueskySearchState = stored.blueskySearchState || { lastSuccessfulByTopic: {} };
+  const linkedinSearchState = stored.linkedinSearchState || { lastSuccessfulByTopic: {} };
+  for (const state of [blueskySearchState, linkedinSearchState]) {
+    state.lastSuccessfulByTopic ||= {};
+    for (const topic of Object.keys(state.lastSuccessfulByTopic)) state.lastSuccessfulByTopic[topic] = baselineAt;
+  }
+  await browser.storage.local.set({ sources, autoVideoState, autoVideoMigrationVersion: 1, blueskySearchState, linkedinSearchState, internetArchiveState: { ...(stored.internetArchiveState || {}), lastSuccessfulAt: baselineAt } });
+  await Promise.all(sources.map(source => MMPDB.setSourceSync(source.id, baselineAt)));
+  return { baselineAt };
 }
 async function uniqueSources() {
   const all = await MMPDB.all(), map = new Map();
@@ -2643,6 +2756,8 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
   }
   if (msg?.type === "detectFaces") return await detectFaceImage(msg.url);
   if (msg.type === "state") { const current = await state(),categoryData=await uniqueSources(); return { ...current, ...categoryData }; }
+  if (msg.type === "fillWallWithLatestArticles") return await fillWallWithLatestArticles(String(msg.wallId || ""));
+  if (msg.type === "resetCollectionBaselines") return await resetCollectionBaselines();
   if (msg.type === "refreshIfStale") return await refreshIfStale();
   if (msg.type === "setRefreshInterval") { const minutes = Number(msg.minutes); if (!REFRESH_INTERVALS.includes(minutes)) throw new Error("Fréquence d’actualisation invalide."); await browser.storage.local.set({ refreshIntervalMinutes: minutes }); await browser.alarms.clear(ALARM); await browser.alarms.create(ALARM, { periodInMinutes: minutes }); return { refreshIntervalMinutes: minutes }; }
   if (msg.type === "rumbleEmbedUrl") return { embedUrl: await rumbleEmbedUrl(msg.url) };
@@ -2688,7 +2803,7 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
       const cutoff = Date.now() - Math.max(1, Number(config.retentionDays) || 3) * 86400000;
       for (const article of countableArticles) {
         if (article.readingState) continue;
-        if (Number(article.publishedAt || article.discoveredAt || 0) < cutoff) continue;
+        if ((article.dateIsFallback || !Number(article.publishedAt) || Number(article.publishedAt) < cutoff && current.wallFillOverrides?.[wall.id]?.[article.id] !== true)) continue;
         if (!(article.sourceIds || [article.sourceId]).some(id => sourceIds.has(id))) continue;
         if (excludedKeywords.some(term => MMP.matchTerm(`${article.title} ${article.summary || ""}`, term))) continue;
         if ((article.categories || []).some(category => excludedCategories.has(MMP.normalizeText(category)))) continue;
@@ -2794,7 +2909,7 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
     if (!channelId) throw new Error("YouTube ne fournit pas l’identifiant public de cette chaîne dans ses métadonnées.");
     return { channelId, channelName: metadata.channelName || "Chaîne YouTube" };
   }
-  if (msg.type === "setArticleStatus" || msg.type === "setArticlesStatus") {if(!["read","later"].includes(msg.status))throw new Error("Action inconnue.");const ids=msg.type==="setArticleStatus"?[msg.articleId]:[...new Set(msg.articleIds||[])];if(!ids.length)return true;const articles=await MMPDB.all(), {articleStates={}}=await browser.storage.local.get({articleStates:{}}), byId=new Map(articles.map(a=>[a.id,a])), updatedAt=Date.now();for(const id of ids){const article=byId.get(id)||articleStates[id]?.article;if(!article)continue;articleStates[id]={status:msg.status,updatedAt,article:{id:article.id,sourceId:article.sourceId,sourceIds:article.sourceIds,canonicalUrl:article.canonicalUrl,title:article.title,summary:article.summary||"",image:article.image||"",categories:article.categories||[],publishedAt:article.publishedAt,discoveredAt:article.discoveredAt,dateIsFallback:!!article.dateIsFallback,...(article.atUri?{atUri:article.atUri,blueskyAuthor:article.blueskyAuthor,blueskyHandle:article.blueskyHandle,blueskyTopics:article.blueskyTopics,blueskyLangs:article.blueskyLangs,blueskyLink:article.blueskyLink,blueskyLinkTitle:article.blueskyLinkTitle,videoChannelName:article.videoChannelName,videoPlatform:article.videoPlatform}:{})}};}await browser.storage.local.set({articleStates});await saveAutomaticSocialSnapshots();browser.runtime.sendMessage({type:"articlesUpdated"}).catch(()=>{});return true;}
+  if (msg.type === "setArticleStatus" || msg.type === "setArticlesStatus") {if(!["read","later"].includes(msg.status))throw new Error("Action inconnue.");const ids=msg.type==="setArticleStatus"?[msg.articleId]:[...new Set(msg.articleIds||[])];if(!ids.length)return true;const articles=await MMPDB.all(), {articleStates={}}=await browser.storage.local.get({articleStates:{}}), byId=new Map(articles.map(a=>[a.id,a])), updatedAt=Date.now();for(const id of ids){const article=byId.get(id)||articleStates[id]?.article;if(!article)continue;articleStates[id]={status:msg.status,updatedAt,article:{id:article.id,sourceId:article.sourceId,sourceIds:article.sourceIds,canonicalUrl:article.canonicalUrl,title:article.title,summary:article.summary||"",image:article.image||"",categories:article.categories||[],publishedAt:article.publishedAt,discoveredAt:article.discoveredAt,dateIsFallback:!!article.dateIsFallback,...(article.atUri?{atUri:article.atUri,blueskyAuthor:article.blueskyAuthor,blueskyHandle:article.blueskyHandle,blueskyTopics:article.blueskyTopics,blueskyLangs:article.blueskyLangs,blueskyLink:article.blueskyLink,blueskyLinkTitle:article.blueskyLinkTitle,videoChannelName:article.videoChannelName,videoPlatform:article.videoPlatform}:{})}};}const {wallFillOverrides={}}=await browser.storage.local.get({wallFillOverrides:{}});for(const articleId of ids)for(const overrides of Object.values(wallFillOverrides))delete overrides[articleId];await browser.storage.local.set({articleStates,wallFillOverrides});await saveAutomaticSocialSnapshots();browser.runtime.sendMessage({type:"articlesUpdated"}).catch(()=>{});return true;}
   if (msg.type === "associateLinkedInPermalink") {
     const updated = await associateLinkedInUrl(msg.articleId, msg.url);
     if (!updated) throw new Error("Utilisez le lien direct d’une publication ou d’un article LinkedIn.");
@@ -2999,7 +3114,7 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
     delete source.pageTabId;
     Object.assign(source, await discoverFavicon(source.pageUrl));
     await MMPDB.pruneSourceHistory(Date.now() - SOURCE_URL_HISTORY_DAYS * 86400000);
-    const sourceArticles = check.articles.map(article => ({ ...article, sourceId: selectedId })), previousSuccessfulSync = await MMPDB.sourceSync(selectedId), rows = await sourceRowsToPersist(selectedId, sourceArticles, previousSuccessfulSync);
+    const sourceArticles = check.articles.map(article => ({ ...article, sourceId: selectedId })).filter(article => !article.dateIsFallback && Number(article.publishedAt) > 0 && Number(article.publishedAt) <= Date.now()).sort((a, b) => Number(b.publishedAt) - Number(a.publishedAt)).slice(0, 5), rows = await sourceRowsToPersist(selectedId, sourceArticles, 0, 0, null, null, true);
     await MMPDB.putMany(rows);
     await MMPDB.rememberSourceArticles(selectedId, sourceArticles, { ...sourceHistoryMetadata(source, check.method, "Manuel"), acquiredCanonicalUrls: rows.map(row => row.canonicalUrl) });
     if (check.method === "html") await clearOrphanedReadingStates(await MMPDB.reconcileSourceArticles(source.id, sourceArticles), source.id, sourceArticles);
@@ -3012,8 +3127,8 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
     source.lastSync = Date.now();
     source.lastSuccessfulSync = source.lastSync;
     await MMPDB.setSourceSync(selectedId, source.lastSync);
-    source.lastArticleAt = Math.max(...sourceArticles.map(a => a.publishedAt));
-    await browser.storage.local.set({ sources: [...current.sources, source] }); browser.runtime.sendMessage({ type: "sourcesUpdated" }).catch(() => {}); return source;
+    source.lastArticleAt = sourceArticles.length ? Math.max(...sourceArticles.map(a => a.publishedAt)) : 0;
+    await browser.storage.local.set({ sources: [...current.sources, source] }); browser.runtime.sendMessage({ type: "articlesUpdated" }).catch(() => {}); browser.runtime.sendMessage({ type: "sourcesUpdated" }).catch(() => {}); return source;
   }
   if (msg.type === "saveSettings") { const current = await state(), { retentionDays, archiveRetentionDays, laterRetentionDays, ...wall } = msg.settings, stored = await browser.storage.local.get({ settings: MMP.DEFAULTS.settings }); const wallSettings = { ...current.wallSettings, [current.activeWallId]: { ...defaultWallSettings(), ...wall } }; await browser.storage.local.set({ settings: { ...stored.settings, retentionDays: Math.max(1, Number(retentionDays ?? stored.settings.retentionDays) || 30), archiveRetentionDays: Math.max(1, Number(archiveRetentionDays ?? stored.settings.archiveRetentionDays ?? retentionDays) || 2), laterRetentionDays: Math.max(1, Number(laterRetentionDays ?? stored.settings.laterRetentionDays ?? retentionDays) || 90) }, wallSettings }); return true; }
   if (msg.type === "setSourceWalls") { const current = await state(), source = current.sources.find(s => s.id === msg.sourceId), wallIds = [...new Set(msg.wallIds || [])]; if (!source) throw new Error("Source introuvable."); if (!wallIds.length || wallIds.some(id => !current.walls.some(w => w.id === id))) throw new Error("Choisissez au moins un mur valide."); source.wallIds = wallIds; await browser.storage.local.set({ sources: current.sources }); browser.runtime.sendMessage({ type: "articlesUpdated" }).catch(() => {}); browser.runtime.sendMessage({ type: "sourcesUpdated" }).catch(() => {}); return source; }

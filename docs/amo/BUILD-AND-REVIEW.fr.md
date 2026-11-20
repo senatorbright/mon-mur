@@ -1,4 +1,12 @@
+## Préparation 5.12.0 — 20 novembre 2026
+
+Le manifeste cible `5.12.0`. Cette version remplace la recherche par périodes anciennes par le remplissage des cinq dernières publications de chaque source, y compris lors du premier ajout d’une source; elle permet de réafficher les éléments déjà enregistrés en conservant les filtres de contenu. La page Préférences → Données et accès lit le numéro directement dans le manifeste et pointe vers `v5.12.0.txt`. Les trois tests ciblés sur le remplissage et la file des nouveaux éléments passent. La suite complète donne 274 réussites et 11 échecs; les mêmes 11 échecs sont reproduits dans l’instantané 5.11.0 (assertion de première collecte obsolète, mocks `browser.runtime.getURL` absents et assertion de collecte initiale LinkedIn). Le lint du contenu exact du paquet rapporte 0 erreur, 0 notice et 9 avertissements. `./scripts/build-release.sh` produit le ZIP et le XPI non signé 5.12.0; leur manifeste et leur correspondance sont vérifiés. L’essai utilisateur du remplissage a été réalisé dans Waterfox avant la préparation du paquet.
+
 # Construction et revue AMO
+
+## Préparation 5.11.0 — 20 novembre 2026
+
+Le manifeste cible `5.11.0`. Cette version ajoute la traduction des articles via Firefox, les réglages de langue cible dans les préférences et leur inclusion dans les sauvegardes. Le suivi cumulatif affiché depuis les préférences pointe vers `v5.11.0.txt`. Le ZIP et le XPI non signé sont construits localement; les tests automatisés, le lint et les essais manuels de cette version restent à effectuer avant diffusion.
 
 ## Préparation 5.10.0 — 19 novembre 2026
 

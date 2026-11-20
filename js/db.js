@@ -84,7 +84,7 @@ const MMPDB = (() => {
         tx.onerror = tx.onabort = () => reject(tx.error);
       });
     },
-    async sourceHistory(sourceId, urls) {
+    async sourceHistory(sourceId, urls, acquiredOnly = false) {
       const unique = [...new Set(urls.filter(Boolean))];
       if (!unique.length) return new Set();
       const db = await open();
@@ -92,7 +92,7 @@ const MMPDB = (() => {
         const tx = db.transaction("sourceHistory", "readonly"), store = tx.objectStore("sourceHistory"), seen = new Set();
         for (const canonicalUrl of unique) {
           const req = store.get([sourceId, canonicalUrl]);
-          req.onsuccess = () => { if (req.result) seen.add(canonicalUrl); };
+          req.onsuccess = () => { if (req.result && (!acquiredOnly || req.result.acquired !== false)) seen.add(canonicalUrl); };
         }
         tx.oncomplete = () => resolve(seen);
         tx.onerror = tx.onabort = () => reject(tx.error);
