@@ -98,6 +98,20 @@ const MMPDB = (() => {
         tx.onerror = tx.onabort = () => reject(tx.error);
       });
     },
+    async sourceHistoryEntries(sourceId, urls) {
+      const unique = [...new Set(urls.filter(Boolean))];
+      if (!unique.length) return new Map();
+      const db = await open();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("sourceHistory", "readonly"), store = tx.objectStore("sourceHistory"), entries = new Map();
+        for (const canonicalUrl of unique) {
+          const req = store.get([sourceId, canonicalUrl]);
+          req.onsuccess = () => { if (req.result) entries.set(canonicalUrl, req.result); };
+        }
+        tx.oncomplete = () => resolve(entries);
+        tx.onerror = tx.onabort = () => reject(tx.error);
+      });
+    },
     async expiredArticleUrls(urls) {
       const unique = [...new Set(urls.filter(Boolean))];
       if (!unique.length) return new Set();
@@ -119,11 +133,25 @@ const MMPDB = (() => {
           const req = store.get([sourceId, canonicalUrl]);
           req.onsuccess = () => {
             const old = req.result || {};
+            const rejection = metadata.rejectionDecisions?.[canonicalUrl];
+            const firstRejection = old.firstRejection || (rejection?.rejectionReason ? {
+              rejectionReason: String(rejection.rejectionReason),
+              cutoffAtDecision: Number(rejection.cutoffAtDecision) || 0,
+              evaluatedAt: Number(rejection.evaluatedAt) || firstSeenAt,
+              publishedAt: Number(rejection.publishedAt) || 0,
+              datePrecision: rejection.datePrecision || "unknown",
+              dateIsFallback: rejection.dateIsFallback === true
+            } : undefined);
             store.put({ ...old, sourceId, canonicalUrl, firstSeenAt: Number(old.firstSeenAt) || firstSeenAt, lastSeenAt: firstSeenAt,
               title: rowsByUrl.get(canonicalUrl)?.title || old.title || "",
+              publishedAt: Number(rowsByUrl.get(canonicalUrl)?.publishedAt) || Number(old.publishedAt) || 0,
+              dateIsFallback: typeof rowsByUrl.get(canonicalUrl)?.dateIsFallback === "boolean" ? rowsByUrl.get(canonicalUrl).dateIsFallback : old.dateIsFallback,
+              datePrecision: rowsByUrl.get(canonicalUrl)?.datePrecision || old.datePrecision || "unknown",
+              acquisitionCutoffAt: Number(old.acquisitionCutoffAt) || (old.acquired === false && Number(old.firstSeenAt) ? Number(old.firstSeenAt) - (Number(metadata.acquisitionLookbackMs) || 0) : 0) || Number(metadata.acquisitionCutoffAt) || 0,
               sourceType: metadata.sourceType || old.sourceType || "",
               sourceName: metadata.sourceName || old.sourceName || "",
               wallIds: metadata.wallIds || old.wallIds || [], acquisitionMode: old.acquisitionMode || metadata.acquisitionMode || "",
+              ...(firstRejection ? { firstRejection } : {}),
               acquired: Array.isArray(metadata.acquiredCanonicalUrls) ? metadata.acquiredCanonicalUrls.includes(canonicalUrl) || old.acquired === true : old.acquired });
           };
         }
@@ -178,8 +206,9 @@ const MMPDB = (() => {
             if (old) {
               old.sourceIds = [...new Set([...(old.sourceIds || [old.sourceId]), incoming.sourceId])];
               if (incoming.title && incoming.title.length < old.title.length) old.title = incoming.title;
-              if (old.dateIsFallback && !incoming.dateIsFallback) { old.publishedAt = incoming.publishedAt; old.dateIsFallback = false; }
+              if (old.dateIsFallback && !incoming.dateIsFallback) { old.publishedAt = incoming.publishedAt; old.dateIsFallback = false; old.datePrecision = incoming.datePrecision || old.datePrecision; }
               else if (!incoming.dateIsFallback && incoming.datePrecision === "instant" && old.datePrecision === "day") { old.publishedAt = incoming.publishedAt; old.datePrecision = "instant"; }
+              else if (!incoming.dateIsFallback && incoming.datePrecision && (!old.datePrecision || old.datePrecision === "unknown")) { old.publishedAt = incoming.publishedAt; old.dateIsFallback = false; old.datePrecision = incoming.datePrecision; }
               if (incoming.dateIsFallback && old.dateIsFallback) old.publishedAt = old.discoveredAt || old.publishedAt;
               if (incoming.replaceImage) { old.image = incoming.image || ""; delete old.readerImage; delete old.imageQualityCheckImage; delete old.imageQualityCheckedAt; }
               else if (incoming.feedImageFallbackUrl && old.image === incoming.feedImageFallbackUrl) old.image = incoming.image || "";

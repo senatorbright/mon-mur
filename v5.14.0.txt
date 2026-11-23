@@ -1,7 +1,17 @@
 # Mon Mur — changelog cumulatif
-Date : 20 novembre 2026
+Date : 23 novembre 2026
 
-Changelog cumulatif de l’extension Firefox Mon Mur. Ce document rassemble l’historique des versions 1.0.0, 2.0.0, 2.1.0, 2.2.0, 2.3.0, 2.4.0, 2.5.0, 2.6.0, 2.7.0, 2.8.0, 2.9.0, 2.10.0, 2.11.0, 2.12.0, 3.0.0, 3.1.0, 3.2.0, 3.3.0, 3.4.0, 3.5.0, 3.6.0, 3.7.0, 3.8.0, 3.9.0, 3.10.0, 3.11.0, 3.12.0, 3.13.0, 3.14.0, 3.15.0, 3.16.0, 3.17.0, 3.18.0, 4.0.0, 4.1.0, 4.2.0, 4.3.0, 4.4.0, 4.5.0, 4.6.0, 4.7.0, 4.8.0, 4.9.0, 4.10.0, 4.11.0, 4.12.0, 5.0.0, 5.1.0, 5.2.0, 5.3.0, 5.4.0, 5.5.0, 5.6.0, 5.7.0, 5.8.0, 5.9.0, 5.10.0, 5.11.0, 5.12.0 et 5.13.0; il remplace les changelogs séparés des versions précédentes.
+Changelog cumulatif de l’extension Firefox Mon Mur. Ce document rassemble l’historique des versions 1.0.0, 2.0.0, 2.1.0, 2.2.0, 2.3.0, 2.4.0, 2.5.0, 2.6.0, 2.7.0, 2.8.0, 2.9.0, 2.10.0, 2.11.0, 2.12.0, 3.0.0, 3.1.0, 3.2.0, 3.3.0, 3.4.0, 3.5.0, 3.6.0, 3.7.0, 3.8.0, 3.9.0, 3.10.0, 3.11.0, 3.12.0, 3.13.0, 3.14.0, 3.15.0, 3.16.0, 3.17.0, 3.18.0, 4.0.0, 4.1.0, 4.2.0, 4.3.0, 4.4.0, 4.5.0, 4.6.0, 4.7.0, 4.8.0, 4.9.0, 4.10.0, 4.11.0, 4.12.0, 5.0.0, 5.1.0, 5.2.0, 5.3.0, 5.4.0, 5.5.0, 5.6.0, 5.7.0, 5.8.0, 5.9.0, 5.10.0, 5.11.0, 5.12.0, 5.13.0 et 5.14.0; il remplace les changelogs séparés des versions précédentes.
+
+## Version 5.14.0 — dates HTML et refus explicables
+
+- Amélioration de l’extraction des dates sur les pages HTML : prise en compte des métadonnées structurées, des heures affichées près du titre et de leurs fuseaux horaires. Quand une liste n’indique pas la date, Mon Mur peut examiner un petit échantillon de pages d’articles; les profils de listes appris sont vérifiés et remplacés si leur structure ou leurs dates ne sont plus fiables.
+- Ajout de la lecture générique de dates dans les URL et le texte éditorial. Une date déduite uniquement de l’URL reste une indication non confirmée et n’est pas utilisée seule pour acquérir un article.
+- Les dates explicites sans heure peuvent être retenues si leur journée recoupe la fenêtre de collecte. Une URL précédemment non acquise peut être réévaluée lorsque l’extraction fournit ensuite une date plus fiable, en conservant son seuil de collecte initial.
+- Enregistrement, dans l’historique IndexedDB existant, du premier motif de refus, du seuil appliqué (`cutoffAtDecision`), de l’heure d’évaluation (`evaluatedAt`) et de la date de publication utilisée (`publishedAt`). Une nouvelle rencontre ne remplace pas cette première décision tracée.
+- Affichage de la première décision enregistrée dans l’historique des acquisitions et ajout de ses valeurs à l’export CSV.
+- Amélioration des diagnostics de collecte RSS, Atom, JSON Feed et HTML : phase de requête, statut HTTP et informations d’erreur; les paramètres sensibles des URL sont masqués.
+- Les règles de seuil ne sont pas modifiées par la seule traçabilité des refus; les décisions restent vérifiables sans relâcher la déduplication ni les tombstones de rétention.
 
 ## Version 5.13.0 — installation et essais documentés
 

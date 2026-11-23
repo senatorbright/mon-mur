@@ -1,4 +1,4 @@
-# Partager et essayer Mon Mur 5.13.0
+# Partager et essayer Mon Mur 5.14.0
 
 ## Ce que contient ce dépôt
 
@@ -60,6 +60,6 @@ Le partage collectif des J’aime avec un mur automatique commun est une idée �
 
 **Licence du projet : GNU GPL v3**, fournie dans `LICENSE`. Les composants tiers et ressources graphiques conservent leurs licences et conditions propres, récapitulées dans `THIRD_PARTY_NOTICES.md` et `amo/ASSET-LICENSES.fr.md`; les visuels de plateforme sans provenance établie ont été remplacés par des pictogrammes originaux sous GPLv3.
 
-## État de la version 5.13.0
+## État de la version 5.14.0
 
-La release 5.13.0 met à jour les instructions d’installation et d’essai. Le paquet ZIP et le XPI non signé sont joints à la release GitHub. L’installation durable est décrite pour Waterfox et Firefox Nightly sur ordinateur, ainsi que pour Firefox Nightly sur Android; le chargement temporaire sur Firefox standard est réservé aux essais et disparaît à la fermeture du navigateur. Les essais manuels sur les différentes plateformes doivent être réalisés dans chaque navigateur utilisé.
+La release 5.14.0 améliore l’extraction des dates HTML, la réévaluation des URL non acquises et l’explication des refus dans l’historique et l’export CSV. Les dates explicites sans heure sont utilisables lorsque leur journée recoupe la fenêtre de collecte; les dates estimées uniquement depuis l’URL ne suffisent toujours pas. La traçabilité conserve les règles de seuil et de déduplication qu’elle observe. Le paquet ZIP et le XPI non signé sont joints à la release GitHub. Les tests ciblés passent; les essais manuels sur les différentes plateformes doivent être réalisés dans chaque navigateur utilisé.

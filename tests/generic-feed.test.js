@@ -120,6 +120,28 @@ test("ordinary JSON APIs are rejected as JSON Feed", () => {
   }
 });
 
+test("an HTML response discovered at a feed URL is rejected as XML", async () => {
+  const background = fs.readFileSync(path.join(__dirname, "../js/background.js"), "utf8");
+  const start = background.indexOf("function structuredExtractionProfile(");
+  const end = background.indexOf("async function validateArticleAccess(", start);
+  class HtmlResponseParser {
+    parseFromString() { return { documentElement: { localName: "html" }, querySelector: () => null }; }
+  }
+  const context = vm.createContext({
+    URL, Date, Map, Set, Promise, DOMParser: HtmlResponseParser,
+    MMP: { normalizeFeedXml: value => value, parseFeed() { throw new Error("HTML must not reach the feed parser"); } },
+    fetchText: async () => ({ text: "<html><body>Page HTML, pas un flux</body></html>", status: 200, type: "text/html", url: "https://publisher.example/feed" }),
+    knownPublisherFeedCandidates: () => [],
+    enrichArticleImages: async () => { throw new Error("No articles should be enriched"); },
+    enrichCinemaArticles: async articles => articles
+  });
+  vm.runInContext(background.slice(start, end), context);
+  const result = await vm.runInContext('fetchSource({id:"source",method:"rss",pageUrl:"https://publisher.example",feedUrl:"https://publisher.example/feed"}, new Map(), [], {})', context);
+  assert.equal(result.articles, undefined);
+  assert.match(result.error, /Flux XML invalide/);
+  assert.match(result.error, /HTTP 200, text\/html, racine <html>/);
+});
+
 test("HTML alternate links discover JSON Feed without a publisher-specific rule", async () => {
   const background = fs.readFileSync(path.join(__dirname, "../js/background.js"), "utf8");
   const start = background.indexOf("function feedMethod(");
@@ -143,7 +165,11 @@ test("the existing source collector stores validated JSON Feed entries using the
   const article = { canonicalUrl: "https://publisher.example/post", title: "Article JSON", summary: "Résumé", author: "Alex", image: "", categories: [], publishedAt: 1, dateIsFallback: false };
   const context = vm.createContext({
     URL, Date, Map, Promise,
-    MMP: { parseJsonFeed: () => [article], recoverArticleTitle: title => title, parseFeed() { throw new Error("XML parser should not run for JSON Feed"); }, normalizeFeedXml() { throw new Error("XML normalization should not run for JSON Feed"); } },
+    MMP: {
+      parseJsonFeed: () => [article], recoverArticleTitle: title => title,
+      assessPublicationDates: rows => ({ sampleCount: rows.length, reliableCount: rows.filter(row => !row.dateIsFallback).length, rate: 1, reliable: true }),
+      parseFeed() { throw new Error("XML parser should not run for JSON Feed"); }, normalizeFeedXml() { throw new Error("XML normalization should not run for JSON Feed"); }
+    },
     fetchText: async () => ({ text: '{"version":"https://jsonfeed.org/version/1","items":[]}', status: 200, type: "application/feed+json" }),
     enrichArticleImages: async (_body, _source, articles) => ({ articles, imageUpdates: [] }),
     enrichCinemaArticles: async articles => articles
@@ -185,4 +211,14 @@ test("the retained French-Stream category feed endpoint remains available", () =
   const candidates = vm.runInContext('knownPublisherFeedCandidates("https://french-stream.net/films/")', context);
   assert.deepEqual(Array.from(candidates), ["https://french-stream.net/engine/rss.php?do=cat&category=films"]);
   assert.deepEqual(Array.from(vm.runInContext('knownPublisherFeedCandidates("https://unknown.example/films/")', context)), []);
+});
+
+test("the separate Jeuxvideo.com RSS discovery path remains available", () => {
+  const background = fs.readFileSync(path.join(__dirname, "../js/background.js"), "utf8");
+  const start = background.indexOf("function knownPublisherFeedCandidates(");
+  const end = background.indexOf("function cleanRequestUrl(", start);
+  const context = vm.createContext({ URL });
+  vm.runInContext(background.slice(start, end), context);
+  assert.deepEqual(Array.from(vm.runInContext('knownPublisherFeedCandidates("https://www.jeuxvideo.com/gaming/")', context)), ["https://www.jeuxvideo.com/rss/rss.xml"]);
+  assert.deepEqual(Array.from(vm.runInContext('knownPublisherFeedCandidates("https://unknown.example/gaming/")', context)), []);
 });

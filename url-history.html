@@ -20,7 +20,7 @@
   <nav class="side-bottom"><a href="settings.html?onboarding=1"><span class="side-icon">?</span><span>Guide et aide</span></a><a href="settings.html?tab=data"><span class="side-icon">⚙</span><span>Préférences</span></a></nav>
 </aside>
 <div class="app-main"><main class="page history-page">
-  <header class="sources-page-header"><div><h1>Historique des acquisitions</h1><p class="muted">URL rencontrées sur les sept derniers jours, regroupées par source.</p></div><div class="history-page-actions"><button id="exportUrlHistory" type="button" class="primary-button">⇩&nbsp; Exporter toutes les URL (CSV)</button><a class="secondary-button" href="settings.html?tab=data">Retour à Données et accès</a><p id="historyStatus" class="muted inline-status" role="status" aria-live="polite"></p></div></header>
+  <header class="sources-page-header"><div><h1>Historique des acquisitions</h1><p class="muted">URL rencontrées sur les sept derniers jours. « Détecté le » indique la première rencontre ; « Date de l’article » affiche la date actuellement connue. Le motif, l’heure de publication et le seuil indiqués dans « Premier refus enregistré » sont figés à la première décision tracée. Pour les URL déjà présentes avant l’ajout de cette traçabilité, cette décision ne peut pas être reconstituée rétroactivement.</p></div><div class="history-page-actions"><button id="exportUrlHistory" type="button" class="primary-button">⇩&nbsp; Exporter toutes les URL (CSV)</button><a class="secondary-button" href="settings.html?tab=data">Retour à Données et accès</a><p id="historyStatus" class="muted inline-status" role="status" aria-live="polite"></p></div></header>
   <section class="panel history-panel" aria-label="Filtres et résultats des acquisitions">
     <div class="history-toolbar">
       <label>Source<select id="historySource"><option value="">Toutes les sources</option></select></label>
@@ -31,7 +31,7 @@
     </div>
     <p id="historySummary" class="history-source-counts" aria-live="polite">Chargement…</p>
     <p class="history-scroll-hint" aria-hidden="true">Faites défiler horizontalement pour voir toutes les colonnes.</p>
-    <div class="history-table-wrap"><table class="history-table"><thead><tr><th>Date</th><th>Source</th><th>Titre</th><th>Mur</th><th>Acquisition</th><th>Mode</th><th>URL</th></tr></thead><tbody id="historyRows"></tbody></table></div>
+    <div class="history-table-wrap"><table class="history-table"><thead><tr><th>Détecté le</th><th>Date de l’article</th><th>Premier refus enregistré</th><th>Source</th><th>Titre</th><th>Mur</th><th>Statut</th><th>Mode</th><th>URL</th></tr></thead><tbody id="historyRows"></tbody></table></div>
   </section>
 </main></div>
 <script src="js/url-history.js"></script><script src="js/sidebar.js"></script>

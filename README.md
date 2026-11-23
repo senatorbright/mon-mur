@@ -1,4 +1,4 @@
-# Mon Mur 5.13.0
+# Mon Mur 5.14.0
 
 > Projet personnel, prototype fonctionnel et cahier des charges vivant, réalisé à 100 % par « vibe coding ». Il répondait aux besoins de son auteur; il est partagé pour être lu, repris et amélioré par des personnes qui souhaitent contribuer. Il n’y a pas d’engagement de maintenance ni de feuille de route de nouvelles fonctions. Le code Mon Mur est distribué sous licence GNU GPL v3; les ressources tierces gardent leurs licences et réserves propres, détaillées dans [les avis](THIRD_PARTY_NOTICES.md) et [l’inventaire des ressources](docs/amo/ASSET-LICENSES.fr.md).
 
@@ -17,7 +17,7 @@ Extension Firefox expérimentale, réalisée par « vibe coding ». Les autorisa
 
 ## Installer la version publiée
 
-La version source est 5.13.0. Téléchargez le fichier `mon-mur-5.13.0.xpi` depuis la [release GitHub](https://github.com/senatorbright/mon-mur/releases). Le XPI est non signé.
+La version source est 5.14.0. Téléchargez le fichier `mon-mur-5.14.0.xpi` depuis la [release GitHub](https://github.com/senatorbright/mon-mur/releases). Le XPI est non signé.
 
 ### Installation durable sur ordinateur
 
@@ -32,7 +32,7 @@ Le Firefox standard ne permet pas d’installer durablement ce XPI non signé. P
 
 Le XPI non signé de cette release peut être installé dans Firefox Nightly Android en désactivant la vérification des signatures. Ce réglage réduit la protection contre les extensions modifiées : installez uniquement le fichier téléchargé depuis la release officielle Mon Mur.
 
-1. Téléchargez `mon-mur-5.13.0.xpi` sur le téléphone.
+1. Téléchargez `mon-mur-5.14.0.xpi` sur le téléphone.
 2. Dans Firefox Nightly, ouvrez `about:config`. Si cette adresse n’est pas disponible, ouvrez `chrome://geckoview/content/config.xhtml`.
 3. Recherchez `xpinstall.signatures.required` et réglez cette préférence booléenne sur `false`.
 4. Ouvrez **Paramètres → À propos de Firefox Nightly**, puis touchez le logo Firefox Nightly cinq fois pour activer le menu de débogage.
@@ -135,6 +135,13 @@ Le filtre des visages s’applique au mur social comme à **Vidéos auto** lorsq
 
 Si une publication Bluesky inclut un lien externe, développer sa carte récupère le lien depuis les métadonnées publiques du post si nécessaire, charge le contenu éditorial de la page liée et le met en cache localement. Firefox demande l’accès au domaine si celui-ci n’est pas déjà autorisé.
 
+## Nouveautés de la version 5.14.0
+
+- Extraction générique des dates de publication pour les pages HTML, y compris les heures et fuseaux affichés sur les articles lorsque la liste ne les fournit pas. Une date lue seulement dans l’URL reste un indice non confirmé.
+- Réévaluation d’une URL non acquise lorsque sa date devient plus fiable, en conservant le seuil de la décision initiale.
+- Enregistrement du premier motif de refus avec la date évaluée, le seuil appliqué et l’heure de décision; ces informations sont visibles dans l’historique des acquisitions et son export CSV.
+- Diagnostics de collecte plus détaillés pour les erreurs de requête et les flux RSS, Atom et JSON Feed.
+
 ## Documents Internet Archive
 
 Dans **Préférences → Murs → Murs automatiques**, **Documents PDF en français** alimente le mur automatique **PDF auto** avec les mots-clés prioritaires des murs. Seuls les PDF dont les métadonnées Internet Archive déclarent le français (`fr`, `fre`, `fra` ou `French`) sont gardés; les langues absentes ou différentes sont écartées. Les résultats sont triés par date d’ajout à Internet Archive; le collecteur traite jusqu’à huit mots-clés par actualisation, vérifie au plus cinq fiches de métadonnées par mot-clé et conserve jusqu’à trois PDF accessibles par terme. Il espace les recherches manuelles d’au moins une minute. Il exige aussi une correspondance dans le titre pour réduire les résultats hors sujet. Les entrées sont dédupliquées par identifiant Internet Archive et leurs dates de publication et d’archivage restent distinctes sur les cartes. Les PDF ne sont pas téléchargés ni analysés.
@@ -143,4 +150,4 @@ Dans **Préférences → Murs → Murs automatiques**, **Documents PDF en franç
 
 Le projet reste expérimental. Les collectes dépendent des flux et des pages accessibles; le scraping depuis le navigateur peut être limité par les sites ou les autorisations Firefox. Le XPI construit localement est non signé et ne représente pas une validation Mozilla. Les essais manuels Firefox de cette publication restent nécessaires.
 
-Le changelog cumulatif est disponible dans [`v5.13.0.txt`](v5.13.0.txt). Le code Mon Mur est sous GNU GPLv3 ([`LICENSE`](LICENSE)); les ressources tierces conservent leurs licences et l’icône Mon Mur et les pictogrammes génériques introduits en 5.6.0 sont également distribués sous GPLv3.
+Le changelog cumulatif est disponible dans [`v5.14.0.txt`](v5.14.0.txt). Le code Mon Mur est sous GNU GPLv3 ([`LICENSE`](LICENSE)); les ressources tierces conservent leurs licences et l’icône Mon Mur et les pictogrammes génériques introduits en 5.6.0 sont également distribués sous GPLv3.

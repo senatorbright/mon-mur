@@ -291,29 +291,57 @@ function sourceTimeout(promise, timeout = 15000) {
   let timer;
   return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => { const error = new Error(`Délai maximal de collecte dépassé (${Math.round(timeout / 1000)} s).`); error.kind = "transient"; reject(error); }, timeout); })]).finally(() => clearTimeout(timer));
 }
-async function sourceRowsToPersist(sourceId, rows, lastSuccessfulSync = 0, firstCollectionStartedAt = 0, wallCutoffs = null, diagnostics = null, acquiredHistoryOnly = false) {
+async function sourceRowsToPersist(sourceId, rows, lastSuccessfulSync = 0, firstCollectionStartedAt = 0, wallCutoffs = null, diagnostics = null, acquiredHistoryOnly = false, rejectionDecisions = null) {
   const urls = rows.map(row => row.canonicalUrl);
-  const [seen, expired, currentArticles] = await Promise.all([MMPDB.sourceHistory(sourceId, urls, acquiredHistoryOnly), MMPDB.expiredArticleUrls(urls), MMPDB.all()]);
+  const historyEntriesPromise = typeof MMPDB.sourceHistoryEntries === "function" ? MMPDB.sourceHistoryEntries(sourceId, urls) : Promise.resolve(new Map());
+  const [seen, historyEntries, expired, currentArticles] = await Promise.all([MMPDB.sourceHistory(sourceId, urls, true), historyEntriesPromise, MMPDB.expiredArticleUrls(urls), MMPDB.all()]);
   const stored = new Set(currentArticles.map(article => article.canonicalUrl));
   const cutoff = Number(lastSuccessfulSync) || 0;
-  const firstCollectionCutoff = firstCollectionStartedAt ? firstCollectionStartedAt - (await refreshInterval()) * 60000 : 0;
+  const needsLegacyRecheckWindow = rows.some(row => historyEntries.get(row.canonicalUrl)?.acquired === false && !Number(historyEntries.get(row.canonicalUrl)?.acquisitionCutoffAt));
+  const refreshLookbackMs = firstCollectionStartedAt || needsLegacyRecheckWindow ? (await refreshInterval()) * 60000 : 0;
+  const firstCollectionCutoff = firstCollectionStartedAt ? firstCollectionStartedAt - refreshLookbackMs : 0;
+  const publicationEndAt = row => (Number(row.publishedAt) || 0) + (row.datePrecision === "day" ? 86400000 : 0);
+  const evaluatedAt = Date.now();
   const diagnosticUrls = diagnostics ? Object.fromEntries(["alreadyStored", "retentionTombstone", "deduplicated", "outsideInitialWindow", "olderThanLastSync", "eligible"].map(key => [key, new Set()])) : null;
   const classified = rows.map(row => {
-    let reason;
+    let reason, cutoffAtDecision = 0;
     if (stored.has(row.canonicalUrl)) reason = "alreadyStored";
     else if (expired.has(row.canonicalUrl)) reason = "retentionTombstone";
     else if (seen.has(row.canonicalUrl)) reason = "deduplicated";
     else {
       const publishedAt = Number(row.publishedAt) || 0;
-      if (row.dateIsFallback || !publishedAt || publishedAt > Date.now() || (!acquiredHistoryOnly && row.datePrecision === "day")) reason = "outsideInitialWindow";
-      else if (firstCollectionCutoff) reason = (wallCutoffs?.size ? [...wallCutoffs.values()].some(value => publishedAt >= value) : publishedAt >= firstCollectionCutoff) ? "eligible" : "outsideInitialWindow";
-      else reason = cutoff > 0 && publishedAt <= cutoff ? "olderThanLastSync" : "eligible";
+      if (row.dateIsFallback || !publishedAt || publishedAt > evaluatedAt) reason = "outsideInitialWindow";
+      else if (firstCollectionCutoff) {
+        cutoffAtDecision = wallCutoffs?.size ? Math.max(...wallCutoffs.values()) : firstCollectionCutoff;
+        reason = publicationEndAt(row) >= cutoffAtDecision ? "eligible" : "outsideInitialWindow";
+      }
+      else {
+        const previous = historyEntries.get(row.canonicalUrl);
+        const previousCutoff = previous?.acquired === false
+          ? Number(previous.acquisitionCutoffAt) || (Number(previous.firstSeenAt) > 0 ? Number(previous.firstSeenAt) - refreshLookbackMs : cutoff)
+          : cutoff;
+        cutoffAtDecision = previousCutoff;
+        reason = previousCutoff > 0 && publicationEndAt(row) <= previousCutoff ? "olderThanLastSync" : "eligible";
+      }
     }
     diagnosticUrls?.[reason]?.add(row.canonicalUrl);
+    if (rejectionDecisions && reason !== "eligible" && reason !== "alreadyStored" && row.canonicalUrl && !rejectionDecisions[row.canonicalUrl]) {
+      rejectionDecisions[row.canonicalUrl] = { rejectionReason: reason, cutoffAtDecision: cutoffAtDecision || 0, evaluatedAt, publishedAt: Number(row.publishedAt) || 0, datePrecision: row.datePrecision || "unknown", dateIsFallback: row.dateIsFallback === true };
+    }
     return { row, reason };
   });
   if (diagnostics) for (const [key, values] of Object.entries(diagnosticUrls)) diagnostics[key] = values.size;
   return classified.filter(item => item.reason === "alreadyStored" || item.reason === "eligible").map(item => item.row);
+}
+function sourceAcquisitionCutoffAt(lastSuccessfulSync = 0, firstCollectionStartedAt = 0, wallCutoffs = null, refreshLookbackMs = 0) {
+  const lastSync = Number(lastSuccessfulSync) || 0;
+  if (lastSync > 0) return lastSync;
+  if (wallCutoffs?.size) { const cutoffs = [...wallCutoffs.values()].map(Number).filter(value => value > 0); if (cutoffs.length) return Math.min(...cutoffs); }
+  return firstCollectionStartedAt > 0 ? Math.max(0, firstCollectionStartedAt - refreshLookbackMs) : 0;
+}
+async function sourceAcquisitionHistoryMetadata(lastSuccessfulSync = 0, firstCollectionStartedAt = 0, wallCutoffs = null) {
+  const acquisitionLookbackMs = (await refreshInterval()) * 60000;
+  return { acquisitionLookbackMs, acquisitionCutoffAt: sourceAcquisitionCutoffAt(lastSuccessfulSync, firstCollectionStartedAt, wallCutoffs, acquisitionLookbackMs) };
 }
 function sourceHistoryMetadata(source, method = source?.method, acquisitionMode = "") {
   let configuredHost = ""; try { configuredHost = new URL(source?.feedUrl || source?.pageUrl || "").hostname; } catch {}
@@ -409,28 +437,45 @@ async function restoreAutomaticSocialSnapshots() {
   }
   return missing.length;
 }
-async function fetchText(url, timeout = 18000) {
+function diagnosticUrl(url) {
+  try {
+    const parsed = new URL(url);
+    for (const key of [...parsed.searchParams.keys()]) if (/token|secret|key|auth|pass|session|sig/i.test(key)) parsed.searchParams.set(key, "[masqué]");
+    return parsed.href;
+  } catch { return String(url || "").slice(0, 500); }
+}
+function requestDiagnostic(phase, url, extra = {}) {
+  return { phase, url: diagnosticUrl(url), ...extra };
+}
+async function fetchText(url, timeout = 18000, phase = "requête réseau") {
+  const safeUrl = value => {
+    try { const parsed = new URL(value); for (const key of [...parsed.searchParams.keys()]) if (/token|secret|key|auth|pass|session|sig/i.test(key)) parsed.searchParams.set(key, "[masqué]"); return parsed.href; }
+    catch { return String(value || "").slice(0, 500); }
+  };
+  const diagnostic = (requestPhase, requestUrl, extra = {}) => ({ phase: requestPhase, url: safeUrl(requestUrl), ...extra });
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeout);
   try {
     let response;
     try { response = await fetch(url, { credentials: "omit", signal: controller.signal, redirect: "follow", headers: { "Accept": "application/feed+json, application/json;q=0.9, application/rss+xml, application/atom+xml, application/xml, text/xml, text/html;q=0.8" } }); }
     catch (error) {
-      if (error?.name === "AbortError") { const e = new Error("Validation impossible pour le moment : délai de connexion dépassé."); e.kind = "transient"; throw e; }
+      if (error?.name === "AbortError") { const e = new Error(`Délai dépassé pendant ${phase}.`); e.kind = "transient"; e.diagnostics = diagnostic(phase, url, { networkError: "timeout", errorName: error.name }); throw e; }
       const detail = `${error?.name || ""} ${error?.message || error || ""}`;
-      if (/ERR_NAME_NOT_RESOLVED|NS_ERROR_UNKNOWN_HOST|ENOTFOUND|EAI_AGAIN|NXDOMAIN/i.test(detail)) throw new Error("Domaine introuvable : vérifiez l’adresse saisie.");
-      if (/ERR_CERT_COMMON_NAME_INVALID|SSL_ERROR_BAD_CERT_DOMAIN|NS_ERROR_DOMAIN_MISMATCH/i.test(detail)) throw new Error("Le certificat HTTPS ne correspond pas au domaine demandé.");
-      if (/ERR_CERT_|SSL_ERROR_|SEC_ERROR_UNKNOWN_ISSUER|MOZILLA_PKIX_ERROR_/i.test(detail)) throw new Error("Le certificat HTTPS présenté par le serveur est invalide.");
-      const e = new Error("Validation impossible pour le moment : connexion refusée ou erreur réseau. Le navigateur ne précise pas davantage la cause."); e.kind = "transient"; throw e;
+      const category = /ERR_NAME_NOT_RESOLVED|NS_ERROR_UNKNOWN_HOST|ENOTFOUND|EAI_AGAIN|NXDOMAIN/i.test(detail) ? "dns"
+        : /ERR_CERT_COMMON_NAME_INVALID|SSL_ERROR_BAD_CERT_DOMAIN|NS_ERROR_DOMAIN_MISMATCH|ERR_CERT_|SSL_ERROR_|SEC_ERROR_UNKNOWN_ISSUER|MOZILLA_PKIX_ERROR_/i.test(detail) ? "tls"
+        : /abort|cancel/i.test(detail) ? "cancelled" : "network";
+      const e = new Error(`${category === "dns" ? "Échec DNS" : category === "tls" ? "Échec TLS/certificat" : "Échec réseau"} pendant ${phase} pour ${safeUrl(url)}${error?.name || error?.message ? ` (${[error?.name, error?.message].filter(Boolean).join(": ")})` : ""}.`);
+      e.kind = "transient"; e.diagnostics = diagnostic(phase, url, { networkError: category, errorName: error?.name || "", errorMessage: String(error?.message || error || "").slice(0, 300) }); throw e;
     }
     if (!response.ok) {
-      const e = new Error([401, 403].includes(response.status) ? `Accès refusé par le serveur (HTTP ${response.status}).` : response.status === 404 || response.status === 410 ? `Adresse introuvable sur le serveur (HTTP ${response.status}).` : response.status === 408 || response.status === 429 || response.status >= 500 ? `Validation impossible pour le moment : réponse temporaire du serveur (HTTP ${response.status}).` : `Le serveur a répondu avec une erreur HTTP ${response.status}.`);
-      e.status = response.status; e.kind = [401, 403].includes(response.status) ? "access" : [404, 410].includes(response.status) ? "strategy" : "transient"; throw e;
+      const type = response.headers.get("content-type") || "";
+      const e = new Error(`${[401, 403].includes(response.status) ? "Accès refusé par le serveur" : response.status === 404 || response.status === 410 ? "Adresse introuvable sur le serveur" : response.status === 408 || response.status === 429 || response.status >= 500 ? "Réponse temporaire du serveur" : "Erreur HTTP"} pendant ${phase} : HTTP ${response.status} (${type || "type inconnu"}) sur ${safeUrl(response.url || url)}.`);
+      e.status = response.status; e.kind = [401, 403].includes(response.status) ? "access" : [404, 410].includes(response.status) ? "strategy" : "transient"; e.diagnostics = diagnostic(phase, response.url || url, { status: response.status, contentType: type }); throw e;
     }
     const finalUrl = response.url || url;
-    if (new URL(url).protocol === "https:" && new URL(finalUrl).protocol !== "https:") throw new Error("La source redirige vers une adresse HTTP non sécurisée.");
+    if (new URL(url).protocol === "https:" && new URL(finalUrl).protocol !== "https:") { const e = new Error(`Redirection HTTPS vers HTTP pendant ${phase} : ${safeUrl(finalUrl)}.`); e.diagnostics = diagnostic(phase, url, { finalUrl: safeUrl(finalUrl), securityError: "https-downgrade" }); throw e; }
     let body;
     try { body = await response.text(); }
-    catch (error) { const e = new Error(error?.name === "AbortError" ? "Validation impossible pour le moment : délai de connexion dépassé." : "Validation impossible pour le moment : la connexion a été interrompue pendant le téléchargement."); e.kind = "transient"; throw e; }
+    catch (error) { const e = new Error(`${error?.name === "AbortError" ? "Délai dépassé" : "Téléchargement interrompu"} pendant ${phase} pour ${safeUrl(finalUrl)}${error?.message ? ` (${error.message})` : ""}.`); e.kind = "transient"; e.diagnostics = diagnostic(phase, finalUrl, { status: response.status, contentType: response.headers.get("content-type") || "", networkError: error?.name === "AbortError" ? "timeout" : "body-read", errorName: error?.name || "" }); throw e; }
     return { text: body, type: response.headers.get("content-type") || "", url: finalUrl, status: response.status };
   }
   finally { clearTimeout(timer); }
@@ -590,6 +635,7 @@ function feedMethod(url, type = "") {
 function knownPublisherFeedCandidates(pageUrl) {
   try {
     const page = new URL(pageUrl);
+    if (/^(?:www\.)?jeuxvideo\.com$/i.test(page.hostname) && /^\/gaming\/?$/i.test(page.pathname)) return [new URL("/rss/rss.xml", page.origin).href];
     if (!/^(?:www\.)?french-stream\.net$/i.test(page.hostname)) return [];
     const category = page.pathname.match(/^\/(films?|series?)\/?$/i)?.[1];
     if (!category) return [];
@@ -617,7 +663,7 @@ function feedPathCandidates(pageUrl) {
   for (const path of ["/feed", "/rss", "/feed.xml", "/rss.xml", "/atom.xml", "/feed.json"]) paths.push(path);
   return [...new Set(paths)].map(path => new URL(path, page.origin).href);
 }
-async function discoverFeedCandidates(pageUrl, pageHtml = "", supplied = []) {
+async function discoverFeedCandidates(pageUrl, pageHtml = "", supplied = [], options = {}) {
   const candidates = [], seenFeeds = new Set(), discoveryPages = [], seenPages = new Set();
   const addFeed = (url, title = "Flux RSS/Atom", type = "") => {
     const clean = cleanRequestUrl(url, pageUrl);
@@ -660,7 +706,7 @@ async function discoverFeedCandidates(pageUrl, pageHtml = "", supplied = []) {
   else {
     try { const response = await fetchText(pageUrl, 8000); if (/html/i.test(response.type)) inspect(response.text, response.url); } catch {}
   }
-  for (let i = 0; i < discoveryPages.length && i < 4; i++) {
+  for (let i = 0; options.inspectSections !== false && i < discoveryPages.length && i < 4; i++) {
     const page = discoveryPages[i];
     if (!await accessible(page.url)) continue;
     try { const response = await fetchText(page.url, 7000); if (/html/i.test(response.type)) inspect(response.text, response.url); } catch {}
@@ -905,16 +951,29 @@ function structuredExtractionProfile(source, articles) {
     validation: { sampleCount: sample.length, validatedAt: Date.now() }
   };
 }
+function representativeArticles(articles, limit = 5) {
+  const rows = Array.isArray(articles) ? articles : [], count = Math.min(rows.length, Math.max(1, Math.min(5, limit)));
+  if (rows.length <= count) return rows.slice();
+  const indexes = Array.from({ length: count }, (_, index) => Math.round(index * (rows.length - 1) / (count - 1)));
+  return [...new Set(indexes)].map(index => rows[index]).filter(Boolean);
+}
 async function fetchSource(source, knownImages, cachedArticles = [], cinemaPolicy = {}) {
   try {
+    if (source.method === "html" && !source.feedUrl) {
+      for (const feedUrl of knownPublisherFeedCandidates(source.pageUrl)) {
+        if (!await accessible(feedUrl)) continue;
+        const feedResult = await fetchSource({ ...source, feedUrl, method: "rss" }, knownImages, cachedArticles, cinemaPolicy);
+        if (!feedResult.error && feedResult.articles?.length) return { ...feedResult, discoveredFeedUrl: feedUrl };
+      }
+    }
     if (source.method === "html") {
-      let html = typeof source.pageHtml === "string" && source.pageHtml ? source.pageHtml : "", responseInfo = "";
+      let html = typeof source.pageHtml === "string" && source.pageHtml ? source.pageHtml : "", responseInfo = "", responseDiagnostic = null;
       if (!html) {
         try {
-          const response = await fetchText(source.pageUrl, 15000);
+          const response = await fetchText(source.pageUrl, 15000, "lecture de la liste HTML");
           html = response.text;
           responseInfo = `HTTP ${response.status}, ${response.type || "type inconnu"}, ${response.url || source.pageUrl}`;
-        } catch (error) { responseInfo = error.message || "erreur réseau"; }
+        } catch (error) { responseInfo = error.message || "erreur réseau"; responseDiagnostic = error.diagnostics || null; }
       }
       const directPublication = MMP.extractHtmlPublication(html, source.pageUrl, source);
       const samePagePublication = directPublication.article && directPublication.diagnostics.structured && MMP.cleanUrl(directPublication.article.canonicalUrl) === MMP.cleanUrl(source.pageUrl);
@@ -1032,16 +1091,67 @@ async function fetchSource(source, knownImages, cachedArticles = [], cinemaPolic
         }
       }
       parsed = parsed.map(article => ({ ...article, title: MMP.recoverArticleTitle(article.title, article.canonicalUrl) }));
+      // Check a representative set of article pages only when listing data
+      // does not establish reliable dates. The same generic extractor is used
+      // at subscription time and on later refreshes.
+      const listingDateAssessment = MMP.assessPublicationDates(parsed);
+      const dateSample = representativeArticles(parsed), dateSampleDetails = new Map(dateSample.map(article => [article.canonicalUrl, {
+        url: diagnosticUrl(article.canonicalUrl), dateFromListing: !article.dateIsFallback,
+        result: article.dateIsFallback ? "date absente de la liste ; page détaillée à vérifier" : "date extraite de la liste"
+      }]));
+      const dateCandidates = dateSample.filter(article => article.dateIsFallback && article.canonicalUrl);
+      let dateCandidateIndex = 0;
+      await Promise.all(Array.from({ length: Math.min(4, dateCandidates.length) }, async () => {
+        while (dateCandidateIndex < dateCandidates.length) {
+          const article = dateCandidates[dateCandidateIndex++];
+          try {
+            const sampleDetail = dateSampleDetails.get(article.canonicalUrl);
+            const page = await fetchText(article.canonicalUrl, 2000, "lecture d’un article échantillonné pour la date");
+            sampleDetail.status = page.status; sampleDetail.contentType = page.type || ""; sampleDetail.finalUrl = diagnosticUrl(page.url || article.canonicalUrl);
+            const extracted = MMP.extractHtmlPublication(page.text, page.url || article.canonicalUrl, source), detail = extracted.article;
+            if (!detail) { sampleDetail.result = "publication non reconnue"; sampleDetail.reason = extracted.diagnostics?.reason || "aucun signal éditorial exploitable"; continue; }
+            if (MMP.cleanUrl(detail.canonicalUrl) !== MMP.cleanUrl(article.canonicalUrl)) { sampleDetail.result = "URL canonique différente"; sampleDetail.canonicalUrl = diagnosticUrl(detail.canonicalUrl); continue; }
+            if (detail.dateIsFallback || !(Number(detail.publishedAt) > 0)) { sampleDetail.result = "date de publication absente ou illisible"; sampleDetail.reason = extracted.diagnostics?.reason || "aucune date de publication explicite extraite"; continue; }
+            article.publishedAt = detail.publishedAt;
+            article.dateIsFallback = false;
+            article.datePrecision = detail.datePrecision || "instant";
+            sampleDetail.dateFromListing = false; sampleDetail.result = "date extraite de la page détaillée"; sampleDetail.datePrecision = detail.datePrecision || "instant";
+          } catch (error) {
+            const sampleDetail = dateSampleDetails.get(article.canonicalUrl);
+            sampleDetail.result = "échec de lecture ou d’extraction de la page détaillée";
+            sampleDetail.reason = error?.message || String(error);
+            sampleDetail.request = error?.diagnostics || requestDiagnostic("lecture d’un article échantillonné pour la date", article.canonicalUrl, { errorName: error?.name || "", errorMessage: String(error?.message || error).slice(0, 300) });
+          }
+        }
+      }));
       const enriched = await enrichArticleImages("", source, parsed, knownImages, true, cachedArticles);
       const articles = await enrichCinemaArticles(enriched.articles,cachedArticles,cinemaPolicy);
+      const dateReliability = MMP.assessPublicationDates(articles);
+      const baselineRate = Number(source.dateReliabilityBaseline?.rate);
+      const materiallyLower = Number.isFinite(baselineRate) && baselineRate > 0 && baselineRate - dateReliability.rate >= 0.25;
+      const degraded = dateReliability.sampleCount >= 2 && (!dateReliability.reliable || materiallyLower);
+      const dateDiagnostics = {
+        ...dateReliability,
+        method: listingDateAssessment.reliable ? "html" : dateCandidates.length ? "article-pages" : "none",
+        listingReliableCount: listingDateAssessment.reliableCount,
+        degraded,
+        sampleDetails: dateSample.map(article => dateSampleDetails.get(article.canonicalUrl)),
+        reason: degraded
+          ? `Détection des dates dégradée : ${dateReliability.reliableCount}/${dateReliability.sampleCount} articles représentatifs ont une date fiable.`
+          : `Dates fiables sur ${dateReliability.reliableCount}/${dateReliability.sampleCount} articles représentatifs.`
+      };
+      extractionDiagnostics = {
+        ...(extractionDiagnostics || {}), dateReliability: dateDiagnostics,
+        reason: [extractionDiagnostics?.reason, dateDiagnostics.reason].filter(Boolean).join(" ")
+      };
       if (!articles.length) {
         const detail = extractionDiagnostics?.reason ? ` Diagnostic : ${extractionDiagnostics.reason}` : "";
         const e = new Error(`Aucun lien d’article fiable détecté (HTML analysé : ${html.length} caractères${capturedFromTab || source.pageHtml ? ", capturé depuis l’onglet" : ""}${responseInfo ? ` ; réponse : ${responseInfo}` : ""}).${detail}`);
-        e.kind = "strategy"; e.diagnostics = extractionDiagnostics; throw e;
+        e.kind = "strategy"; e.diagnostics = { phase: "extraction de la liste HTML", request: responseDiagnostic, extraction: extractionDiagnostics }; throw e;
       }
-      return { articles, imageUpdates: enriched.imageUpdates, method: "html", valid: true, status: source.pageHtml || capturedFromTab ? 200 : undefined, extractionProfile, extractionDiagnostics };
+      return { articles, imageUpdates: enriched.imageUpdates, method: "html", valid: true, status: source.pageHtml || capturedFromTab ? 200 : undefined, extractionProfile, extractionDiagnostics, dateReliability: dateDiagnostics };
     }
-    const { text, status, type } = await fetchText(source.feedUrl, 15000);
+    const { text, status, type } = await fetchText(source.feedUrl, 15000, "lecture du flux RSS/Atom/JSON");
     let parsed;
     let xmlRoot = "";
     try {
@@ -1064,7 +1174,16 @@ async function fetchSource(source, knownImages, cachedArticles = [], cinemaPolic
     parsed = parsed.map(article => ({ ...article, title: MMP.recoverArticleTitle(article.title, article.canonicalUrl) }));
     const enriched = await enrichArticleImages(text, source, parsed, knownImages, false, cachedArticles);
     const articles = await enrichCinemaArticles(enriched.articles,cachedArticles,cinemaPolicy);
-    return { articles, imageUpdates: enriched.imageUpdates, method: source.method, valid: true, status, extractionProfile: structuredExtractionProfile(source, articles) };
+    const dateReliability = MMP.assessPublicationDates(articles);
+    const baselineRate = Number(source.dateReliabilityBaseline?.rate);
+    const degraded = dateReliability.sampleCount >= 2 && (!dateReliability.reliable || Number.isFinite(baselineRate) && baselineRate > 0 && baselineRate - dateReliability.rate >= 0.25);
+    const dateDiagnostics = {
+      ...dateReliability, method: "feed", degraded,
+      reason: degraded
+        ? `Détection des dates dégradée dans le flux : ${dateReliability.reliableCount}/${dateReliability.sampleCount} entrées représentatives ont une date fiable.`
+        : `Dates fiables dans le flux sur ${dateReliability.reliableCount}/${dateReliability.sampleCount} entrées représentatives.`
+    };
+    return { articles, imageUpdates: enriched.imageUpdates, method: source.method, valid: true, status, extractionProfile: structuredExtractionProfile(source, articles), dateReliability: dateDiagnostics, extractionDiagnostics: { dateReliability: dateDiagnostics, reason: dateDiagnostics.reason } };
   } catch (err) { return { error: err.message || "Erreur réseau", kind: err.kind || "transient", status: err.status || 0, diagnostics: err.diagnostics || null }; }
 }
 async function validateArticleAccess(source, articles, forceCinema = false) {
@@ -1594,7 +1713,7 @@ function readerFallback(article) {
   const escaped = String(article.summary || "Aucun résumé n’est disponible.").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
   return MMP.sanitizeArticleHtml(`<p>${escaped}</p>`, article.canonicalUrl);
 }
-let refreshInFlight = null, refreshQueued = null;
+let refreshInFlight = null, refreshQueued = null, wallFillQueue = Promise.resolve();
 async function rediscoverSource(source, knownImages, cachedArticles, previousSuccessfulSync=0, firstCollectionStartedAt=0, deadlineAt=Date.now()+15000, acquisitionMode="Automatique") {
   const stamp = Date.now();
   source.lastRediscoveryAt = stamp;
@@ -1617,10 +1736,11 @@ async function rediscoverSource(source, knownImages, cachedArticles, previousSuc
       if (!result.error && result.articles.length) {
         const wallCutoffs = await firstCollectionCutoffsFor(source, result.articles, current, cachedArticles, firstCollectionStartedAt);
         const persistenceDiagnostics = {};
-        const rows = await sourceRowsToPersist(source.id, [...result.articles, ...(result.imageUpdates || [])], previousSuccessfulSync, firstCollectionStartedAt, wallCutoffs, persistenceDiagnostics);
+        const rejectionDecisions = {};
+        const rows = await sourceRowsToPersist(source.id, [...result.articles, ...(result.imageUpdates || [])], previousSuccessfulSync, firstCollectionStartedAt, wallCutoffs, persistenceDiagnostics, false, rejectionDecisions);
         const knownSourceUrls = await MMPDB.sourceHistory(source.id, result.articles.map(row => row.canonicalUrl));
         await MMPDB.putMany(rows);
-        await MMPDB.rememberSourceArticles(source.id, result.articles, { ...sourceHistoryMetadata(source, result.method, acquisitionMode), acquiredCanonicalUrls: rows.map(row => row.canonicalUrl) });
+        await MMPDB.rememberSourceArticles(source.id, result.articles, { ...sourceHistoryMetadata(source, result.method, acquisitionMode), ...await sourceAcquisitionHistoryMetadata(previousSuccessfulSync, firstCollectionStartedAt, wallCutoffs), rejectionDecisions, acquiredCanonicalUrls: rows.map(row => row.canonicalUrl) });
         source.lastAcquisitionDiagnostics = sourceAcquisitionDiagnostic({ attemptedAt: source.lastAttemptAt || stamp, finishedAt: Date.now(), outcome: "success", method: result.method, result, selectedRows: rows, knownSourceUrls: [...knownSourceUrls], persistenceDiagnostics, storageCompleted: true, stage: "redécouverte et mémorisation" });
         if (result.method === "html") await clearOrphanedReadingStates(await MMPDB.reconcileSourceArticles(source.id, result.articles), source.id, result.articles);
         source.method = result.method; source.feedUrl = feedUrl;
@@ -1640,10 +1760,11 @@ async function rediscoverSource(source, knownImages, cachedArticles, previousSuc
     if (!result.error && result.articles.length && result.extractionProfile?.refreshable !== false) {
       const wallCutoffs = await firstCollectionCutoffsFor(source, result.articles, current, cachedArticles, firstCollectionStartedAt);
       const persistenceDiagnostics = {};
-      const rows = await sourceRowsToPersist(source.id, [...result.articles, ...(result.imageUpdates || [])], previousSuccessfulSync, firstCollectionStartedAt, wallCutoffs, persistenceDiagnostics);
+      const rejectionDecisions = {};
+      const rows = await sourceRowsToPersist(source.id, [...result.articles, ...(result.imageUpdates || [])], previousSuccessfulSync, firstCollectionStartedAt, wallCutoffs, persistenceDiagnostics, false, rejectionDecisions);
       const knownSourceUrls = await MMPDB.sourceHistory(source.id, result.articles.map(row => row.canonicalUrl));
       await MMPDB.putMany(rows);
-      await MMPDB.rememberSourceArticles(source.id, result.articles, { ...sourceHistoryMetadata(source, result.method, acquisitionMode), acquiredCanonicalUrls: rows.map(row => row.canonicalUrl) });
+      await MMPDB.rememberSourceArticles(source.id, result.articles, { ...sourceHistoryMetadata(source, result.method, acquisitionMode), ...await sourceAcquisitionHistoryMetadata(previousSuccessfulSync, firstCollectionStartedAt, wallCutoffs), rejectionDecisions, acquiredCanonicalUrls: rows.map(row => row.canonicalUrl) });
       source.lastAcquisitionDiagnostics = sourceAcquisitionDiagnostic({ attemptedAt: source.lastAttemptAt || stamp, finishedAt: Date.now(), outcome: "success", method: result.method, result, selectedRows: rows, knownSourceUrls: [...knownSourceUrls], persistenceDiagnostics, storageCompleted: true, stage: "redécouverte et mémorisation" });
       await clearOrphanedReadingStates(await MMPDB.reconcileSourceArticles(source.id, result.articles), source.id, result.articles);
       source.method = "html"; source.feedUrl = "";
@@ -2082,7 +2203,7 @@ async function refreshBluesky(acquisitionMode = "Automatique") {
           if (!image && current.blueskyRequireImage) { topicDiagnostics.imageRejected++;diagnostics.imageRejected++;continue; }
           const blueskyLink=blueskyExternalLink(post,record);
           rows.push({ id: MMP.stableId(uri), sourceId: BLUESKY_SOURCE_ID, sourceIds: [BLUESKY_SOURCE_ID], atUri: uri, blueskyAdult:false, canonicalUrl, blueskyLangs: languages.map(String),
-            title: text.slice(0, 180), summary: text, image, blueskyPostImage:image, blueskyAvatar:post.author?.avatar||"", blueskyLinkImage:(post.embed?.external||post.embed?.recordWithMedia?.media?.external)?.thumb||"", blueskyLinkDescription:(post.embed?.external||post.embed?.recordWithMedia?.media?.external)?.description||"", categories: [], publishedAt: publishedAt || now,
+            title: text.slice(0, 180), summary: text, image, blueskyPostImage:image, blueskyAvatar:post.author?.avatar||"", blueskyLinkImage:(post.embed?.external||post.embed?.recordWithMedia?.media?.external)?.thumb||"", blueskyLinkDescription:(post.embed?.external||post.embed?.recordWithMedia?.media?.external)?.description||"", categories: [], publishedAt: publishedAt || now, dateIsFallback: !publishedAt, datePrecision: publishedAt ? "instant" : "unknown",
             discoveredAt: now, fetchedAt: now, blueskyAuthor: post.author?.displayName || handle, blueskyHandle: handle,
             videoChannelName: post.author?.displayName || handle, blueskyTopics: [topic.term], blueskyLink, blueskyLinkTitle: post.embed?.external?.title || "", videoPlatform: "Bluesky" });
         }
@@ -2352,8 +2473,13 @@ async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique", hist
             const selectedArticles = latestPerSource ? datedArticles.slice(0, latestPerSource) : result.articles;
             const wallCutoffs = historySlice ? new Map([[wallId, Number(historyWindow.lowerBound)]]) : latestPerSource ? new Map([[wallId, 0]]) : null;
             const persistenceDiagnostics = {};
-            let rows = await sourceRowsToPersist(source.id, [...selectedArticles, ...(result.imageUpdates || [])], previousSuccessfulSync, firstCollectionStartedAt, wallCutoffs, persistenceDiagnostics, !!historyWindow);
-            if (historySlice) rows = rows.filter(row => Number(row.publishedAt) >= Number(historyWindow.lowerBound) && Number(row.publishedAt) < Number(historyWindow.upperBound));
+            const rejectionDecisions = {};
+            let rows = await sourceRowsToPersist(source.id, [...selectedArticles, ...(result.imageUpdates || [])], previousSuccessfulSync, firstCollectionStartedAt, wallCutoffs, persistenceDiagnostics, !!historyWindow, rejectionDecisions);
+            if (historySlice) rows = rows.filter(row => {
+              const publishedAt = Number(row.publishedAt) || 0;
+              const publicationEndAt = publishedAt + (row.datePrecision === "day" ? 86400000 : 0);
+              return publicationEndAt > Number(historyWindow.lowerBound) && publishedAt < Number(historyWindow.upperBound);
+            });
             if (latestPerSource) {
               const knownUrls = new Set(cachedArticles.map(article => article.canonicalUrl));
               const addedCount = rows.filter(row => !knownUrls.has(row.canonicalUrl)).length;
@@ -2372,7 +2498,8 @@ async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique", hist
             if (historySlice) {
               const windowArticles = result.articles.filter(row => {
                 const publishedAt = Number(row.publishedAt) || 0;
-                return !row.dateIsFallback && row.datePrecision !== "day" && publishedAt >= Number(historyWindow.lowerBound) && publishedAt < Number(historyWindow.upperBound) && publishedAt <= now;
+                const publicationEndAt = publishedAt + (row.datePrecision === "day" ? 86400000 : 0);
+                return !row.dateIsFallback && publicationEndAt > Number(historyWindow.lowerBound) && publishedAt < Number(historyWindow.upperBound) && publishedAt <= now;
               });
               const cachedUrls = new Set(cachedArticles.map(article => article.canonicalUrl));
               for (const row of windowArticles) {
@@ -2389,13 +2516,13 @@ async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique", hist
             }
             attemptStorageCompleted = true;
             attemptStage = "historique des URL";
-            await MMPDB.rememberSourceArticles(source.id, result.articles, { ...sourceHistoryMetadata(source, result.method, acquisitionMode), acquiredCanonicalUrls: rows.map(row => row.canonicalUrl) });
+            await MMPDB.rememberSourceArticles(source.id, result.articles, { ...sourceHistoryMetadata(source, result.method, acquisitionMode), ...await sourceAcquisitionHistoryMetadata(previousSuccessfulSync, firstCollectionStartedAt, wallCutoffs), rejectionDecisions, acquiredCanonicalUrls: rows.map(row => row.canonicalUrl) });
             source.lastAcquisitionDiagnostics = sourceAcquisitionDiagnostic({ attemptedAt: attemptAt, finishedAt: Date.now(), outcome: "success", method: result.method, result, selectedRows: rows, knownSourceUrls: [...knownSourceUrls], persistenceDiagnostics, storageCompleted: true, stage: "mémorisation" });
             attemptStage = "finalisation de synchronisation";
             if (!historyWindow) { source.lastSuccessfulSync = now; await MMPDB.setSourceSync(source.id, now); source.lastSync = now; }
             if (!historyWindow) delete source.firstCollectionBaselineAt;
             if (result.method === "html") await clearOrphanedReadingStates(await MMPDB.reconcileSourceArticles(source.id, result.articles), source.id, result.articles);
-            source.method = result.method; source.status = "ok"; source.lastError = ""; source.strategyFailures = 0;
+            source.method = result.method; if (result.discoveredFeedUrl) source.feedUrl = result.discoveredFeedUrl; source.status = "ok"; source.lastError = ""; source.strategyFailures = 0;
             source.extractionProfile = result.extractionProfile || null;
             if (result.extractionProfile) source.enabled = result.extractionProfile.refreshable !== false;
             source.lastExtractionDiagnostics = result.extractionDiagnostics || null;
@@ -2458,8 +2585,59 @@ async function refreshAllImpl(wallId = "", acquisitionMode = "Automatique", hist
   return { sources, youtube, bluesky, linkedin, internetArchive };
 }
 async function fillWallWithLatestArticles(wallId) {
+  if (typeof wallFillQueue === "undefined") return fillWallWithLatestArticlesImpl(wallId);
+  const operation = wallFillQueue.catch(() => {}).then(() => fillWallWithLatestArticlesImpl(wallId));
+  wallFillQueue = operation.then(() => undefined, () => undefined);
+  return operation;
+}
+async function fillWallWithLatestArticlesImpl(wallId) {
   const current = await state();
   const automaticWall = current.autoWalls.find(wall => wall.id === wallId);
+  if (typeof MMPDB.sourceHistoryRows === "function") {
+    const [historyRows, storedArticles] = await Promise.all([MMPDB.sourceHistoryRows(), MMPDB.all()]);
+    const byUrl = new Map(storedArticles.map(article => [article.canonicalUrl, article]));
+    const allowedSources = automaticWall
+      ? new Set(automaticWall.kind === "youtube" ? [YOUTUBE_SOURCE_ID, PEERTUBE_SOURCE_ID, CROWDBUNKER_SOURCE_ID, RUMBLE_SOURCE_ID] : automaticWall.kind === "bluesky" ? [BLUESKY_SOURCE_ID, LINKEDIN_SOURCE_ID] : automaticWall.kind === "documents" ? [`${INTERNET_ARCHIVE_SOURCE_PREFIX}documents`] : [])
+      : new Set(current.sources.filter(source => source.enabled && (source.wallIds || []).includes(wallId)).map(source => source.id));
+    const bySource = new Map();
+    for (const row of historyRows) {
+      const belongsToWall = automaticWall?.kind === "documents" ? (row.wallIds || []).length > 0 : (row.wallIds || []).includes(wallId);
+      if (row.acquired !== true || !allowedSources.has(row.sourceId) || !belongsToWall) continue;
+      const article = byUrl.get(row.canonicalUrl);
+      if (!article || !(article.sourceIds || [article.sourceId]).includes(row.sourceId)) continue;
+      const publishedAt = Number(row.publishedAt) || Number(article.publishedAt) || 0;
+      const dateIsFallback = typeof row.dateIsFallback === "boolean" ? row.dateIsFallback : article.dateIsFallback === true;
+      if (dateIsFallback || !publishedAt || publishedAt > Date.now()) continue;
+      if (!bySource.has(row.sourceId)) bySource.set(row.sourceId, []);
+      const datePrecision = row.datePrecision && row.datePrecision !== "unknown" ? row.datePrecision : article.datePrecision || "instant";
+      const fillArticle = article.dateIsFallback || !article.datePrecision || article.datePrecision === "unknown" || article.datePrecision === "day" && datePrecision === "instant"
+        ? { ...article, publishedAt, dateIsFallback: false, datePrecision }
+        : article;
+      bySource.get(row.sourceId).push({ row, article: fillArticle, publishedAt });
+    }
+    const selected = [], sourceResults = [];
+    for (const [sourceId, rows] of bySource) {
+      rows.sort((a, b) => b.publishedAt - a.publishedAt || b.row.firstSeenAt - a.row.firstSeenAt);
+      const latest = rows.slice(0, 5);
+      selected.push(...latest.map(item => item.article));
+      const source = current.sources.find(item => item.id === sourceId);
+      const name = source?.name || latest[0]?.row.sourceName || sourceId;
+      sourceResults.push({ sourceId, name, receivedCount: rows.length, datedCount: rows.length, candidateCount: latest.length, alreadyStoredCount: latest.length, addedCount: 0, canonicalUrls: latest.map(item => item.article.canonicalUrl) });
+    }
+    const selectedArticles = [...new Map(selected.map(article => [article.id, article])).values()];
+    if (selectedArticles.length) {
+      await MMPDB.putMany(selectedArticles);
+      await clearReadStatusesForFill(selectedArticles);
+      if (!automaticWall) {
+        const storedOverrides = await browser.storage.local.get({ wallFillOverrides: {} }), overrides = { ...(storedOverrides.wallFillOverrides || {}) }, currentOverrides = { ...(overrides[wallId] || {}) };
+        for (const article of selectedArticles) { delete currentOverrides[article.id]; currentOverrides[article.id] = true; }
+        overrides[wallId] = Object.fromEntries(Object.entries(currentOverrides).filter(([, enabled]) => enabled === true).slice(-100));
+        await browser.storage.local.set({ wallFillOverrides: overrides });
+      }
+      browser.runtime.sendMessage({ type: "articlesUpdated" }).catch(() => {});
+      return { automatic: !!automaticWall, sourceResults, articleIds: selectedArticles.map(article => article.id), foundCount: selectedArticles.length, addedCount: 0, failed: false, acquisitionHistory: true };
+    }
+  }
   if (automaticWall) {
     let results = [];
     if (automaticWall.kind === "youtube") {
@@ -2774,7 +2952,10 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
       const googleNews = /(^|\.)news\.google\.com$/i.test((() => { try { return new URL(configuredUrl).hostname; } catch { return ""; } })());
       const sourceType = builtin?.[0] || (googleNews ? "Google Actualités" : source?.method === "rss" || source?.method === "atom" ? "RSS" : source?.method === "jsonfeed" ? "JSON Feed" : source?.method === "html" ? "Site web" : row.sourceType || "Source");
       const wallIds = row.wallIds?.length ? row.wallIds : source?.wallIds || [];
-      return { ...row, sourceName, sourceType, title: row.title || article?.title || "", wallNames: wallIds.map(id => wallNames.get(id)).filter(Boolean) };
+      const publishedAt = Number(row.publishedAt) || Number(article?.publishedAt) || 0;
+      const automaticTimestamp = !!builtins[row.sourceId] && publishedAt > 0;
+      const dateMetadataRecorded = row.publishedAt !== undefined || row.datePrecision !== undefined || typeof row.dateIsFallback === "boolean" || article?.publishedAt !== undefined;
+      return { ...row, sourceName, sourceType, title: row.title || article?.title || "", publishedAt, dateIsFallback: typeof row.dateIsFallback === "boolean" ? row.dateIsFallback : typeof article?.dateIsFallback === "boolean" ? article.dateIsFallback : automaticTimestamp ? false : undefined, datePrecision: row.datePrecision || article?.datePrecision || (automaticTimestamp ? "instant" : "unknown"), dateMetadataRecorded, wallNames: wallIds.map(id => wallNames.get(id)).filter(Boolean) };
     }).sort((a, b) => b.firstSeenAt - a.firstSeenAt);
   }
   if (msg.type === "sidebarCounts") {
@@ -3033,21 +3214,69 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
     source.enabled = true; source.addedAt = Date.now(); source.wallIds = selected;
     const cinemaPolicy=sourceCinemaPolicy({...source,wallIds:selected},current);
     let selectedSource = source, check, articleAccess, validationError;
+    let feedCandidatesChecked = false, feedChecks = 0;
+    const feedFailures = [];
+    // For a page URL, test a small set of already discoverable RSS/Atom
+    // candidates first. Reuse the fetched homepage if HTML becomes necessary.
+    if (source.method === "html") {
+      try {
+        if (!source.pageHtml) source.pageHtml = (await fetchText(source.pageUrl, 10000, "lecture de la page source à l’ajout")).text;
+        const candidates = await discoverFeedCandidates(source.pageUrl, source.pageHtml, source.feedCandidates || [], { inspectSections: false });
+        const prioritizedCandidates = [
+          ...candidates.filter(candidate => !String(candidate.title || "").startsWith("Flux /")),
+          ...candidates.filter(candidate => String(candidate.title || "").startsWith("Flux /"))
+        ];
+        feedCandidatesChecked = true;
+        for (const candidate of prioritizedCandidates.slice(0, 8)) {
+          const feedSource = { ...source, method: feedMethod(candidate.url, candidate.type), feedUrl: candidate.url };
+          if (!await accessible(candidate.url)) { feedFailures.push(`${new URL(candidate.url).pathname}: accès indisponible`); continue; }
+          feedChecks++;
+          try {
+            const feedCheck = await fetchSource(feedSource, new Map(), [], cinemaPolicy);
+            if (feedCheck.error) { feedFailures.push(`${new URL(candidate.url).pathname}: ${feedCheck.error}`); continue; }
+            if (!feedCheck.articles.length) { feedFailures.push(`${new URL(candidate.url).pathname}: flux vide`); continue; }
+            if (!feedCheck.dateReliability?.reliable) {
+              feedFailures.push(`${new URL(candidate.url).pathname}: dates fiables insuffisantes (${feedCheck.dateReliability?.reliableCount || 0}/${feedCheck.dateReliability?.sampleCount || 0})`);
+              continue;
+            }
+            selectedSource = feedSource; check = feedCheck;
+            articleAccess = await validateArticleAccess(selectedSource, check.articles, cinemaPolicy.force && !cinemaPolicy.disabled);
+            break;
+          } catch (error) { feedFailures.push(`${new URL(candidate.url).pathname}: ${error.message || error}`); }
+        }
+      } catch (error) {
+        feedCandidatesChecked = true;
+        feedFailures.push(`Découverte RSS/Atom : ${error.message || error}`);
+      }
+    }
     try {
-      check = await fetchSource(selectedSource, new Map(), [], cinemaPolicy);
-      if (check.error) throw new Error(check.error);
+      if (!check) check = await fetchSource(selectedSource, new Map(), [], cinemaPolicy);
+      if (check.error) throw Object.assign(new Error(check.error), { diagnostics: check.diagnostics });
       if (!check.articles.length) throw new Error("Le flux ne contient aucune fiche exploitable.");
+      if (check.discoveredFeedUrl) selectedSource = { ...selectedSource, method: "rss", feedUrl: check.discoveredFeedUrl };
       articleAccess = await validateArticleAccess(selectedSource, check.articles, cinemaPolicy.force && !cinemaPolicy.disabled);
+      if (selectedSource.method === "html" && !check.dateReliability?.reliable) {
+        const dates = check.dateReliability || MMP.assessPublicationDates(check.articles);
+        throw new Error(`Dates de publication insuffisamment fiables : ${dates.reliableCount}/${dates.sampleCount} articles représentatifs sont datés. Les dates présentes uniquement dans les URL ne suffisent pas.`);
+      }
     } catch (error) { validationError = error; }
+    if (selectedSource.method !== "html" && check && !check.error && !check.dateReliability?.reliable) {
+      const dates = check.dateReliability || MMP.assessPublicationDates(check.articles);
+      validationError = new Error(`Flux reçu, mais dates de publication insuffisamment fiables : ${dates.reliableCount}/${dates.sampleCount} articles représentatifs sont datés.`);
+    }
     // A feed can parse correctly while linking to pages that cannot be used.
     // In that case, try the page's repeated HTML cards before rejecting it.
-    if ((validationError || articleAccess?.needsPermission) && source.method !== "html") {
+    if ((validationError || articleAccess?.needsPermission) && (source.method !== "html" || selectedSource.method !== "html")) {
       const htmlSource = { ...source, method: "html", feedUrl: "" };
       selectedSource = htmlSource;
       try {
         const htmlCheck = await fetchSource(htmlSource, new Map(), [], cinemaPolicy);
-        if (htmlCheck.error) throw new Error(htmlCheck.error);
+        if (htmlCheck.error) throw Object.assign(new Error(htmlCheck.error), { diagnostics: htmlCheck.diagnostics });
         if (!htmlCheck.articles.length) throw new Error("Aucun article HTML exploitable.");
+        if (!htmlCheck.dateReliability?.reliable) {
+          const dates = htmlCheck.dateReliability || MMP.assessPublicationDates(htmlCheck.articles);
+          throw new Error(`Dates HTML insuffisamment fiables : ${dates.reliableCount}/${dates.sampleCount} articles représentatifs sont datés.`);
+        }
         const htmlAccess = await validateArticleAccess(htmlSource, htmlCheck.articles, cinemaPolicy.force && !cinemaPolicy.disabled);
         check = htmlCheck; articleAccess = htmlAccess; selectedSource = htmlSource; validationError = null;
       } catch (error) {
@@ -3059,7 +3288,7 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
     // Preview and confirmation are separate requests. If HTML worked during
     // preview but no longer produces cards at confirmation time, rediscover
     // the publisher's feed before failing the subscription.
-    if ((validationError || articleAccess?.needsPermission || check?.extractionProfile?.refreshable === false) && selectedSource.method === "html") {
+    if ((validationError || articleAccess?.needsPermission || check?.extractionProfile?.refreshable === false) && selectedSource.method === "html" && !feedCandidatesChecked) {
       let feedChecks = 0;
       const feedFailures = [];
       try {
@@ -3082,6 +3311,7 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
             const feedLabel = `${feedUrl.pathname}${safeQuery ? `?${safeQuery}` : ""}`;
             if (feedCheck.error) { feedFailures.push(`${feedLabel}: ${feedCheck.error}`); continue; }
             if (!feedCheck.articles.length) { feedFailures.push(`${feedLabel}: flux vide`); continue; }
+            if (!feedCheck.dateReliability?.reliable) { feedFailures.push(`${feedLabel}: dates fiables insuffisantes (${feedCheck.dateReliability?.reliableCount || 0}/${feedCheck.dateReliability?.sampleCount || 0})`); continue; }
             const feedAccess = await validateArticleAccess(feedSource, feedCheck.articles, cinemaPolicy.force && !cinemaPolicy.disabled);
             check = feedCheck; articleAccess = feedAccess; selectedSource = feedSource; validationError = null;
             if (!feedAccess?.needsPermission) break;
@@ -3094,10 +3324,24 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
       } catch {}
       if (validationError) {
         const detail = feedChecks ? `Flux RSS testés (${feedChecks}) : ${feedFailures[0] || "aucune fiche accessible"}.` : "Aucun flux RSS candidat n’a été reçu ou trouvé sur la page.";
-        validationError = new Error(`${validationError.message}. ${detail}`);
+        validationError = Object.assign(new Error(`${validationError.message}. ${detail}`), { diagnostics: validationError.diagnostics });
       }
     }
-    if (validationError) throw validationError;
+    if (validationError && feedCandidatesChecked) {
+      const detail = feedChecks ? `Flux RSS/Atom testés (${feedChecks}) : ${feedFailures[0] || "aucun flux fiable"}.` : "Aucun flux RSS/Atom avec dates fiables n’a été trouvé.";
+      validationError = Object.assign(new Error(`${validationError.message} ${detail}`), { diagnostics: validationError.diagnostics });
+    }
+    if (validationError) {
+      validationError.diagnostics = {
+        ...(validationError.diagnostics || {}),
+        phase: validationError.diagnostics?.phase || (check?.dateReliability ? "validation des dates" : "validation de la source"),
+        url: diagnosticUrl(selectedSource.feedUrl || selectedSource.pageUrl),
+        dateReliability: check?.dateReliability || null,
+        extraction: check?.extractionDiagnostics || null,
+        feedFailures: feedFailures.slice(0, 8)
+      };
+      throw validationError;
+    }
     if (articleAccess?.needsPermission) return { needsPermission: articleAccess.needsPermission };
     const selectedId = MMP.stableId(source.pageUrl + "|" + (selectedSource.feedUrl || "html"));
     const selectedExisting = current.sources.find(item => item.id === selectedId);
@@ -3114,14 +3358,18 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
     delete source.pageTabId;
     Object.assign(source, await discoverFavicon(source.pageUrl));
     await MMPDB.pruneSourceHistory(Date.now() - SOURCE_URL_HISTORY_DAYS * 86400000);
-    const sourceArticles = check.articles.map(article => ({ ...article, sourceId: selectedId })).filter(article => !article.dateIsFallback && Number(article.publishedAt) > 0 && Number(article.publishedAt) <= Date.now()).sort((a, b) => Number(b.publishedAt) - Number(a.publishedAt)).slice(0, 5), rows = await sourceRowsToPersist(selectedId, sourceArticles, 0, 0, null, null, true);
+    const sourceArticles = check.articles.map(article => ({ ...article, sourceId: selectedId })).filter(article => !article.dateIsFallback && Number(article.publishedAt) > 0 && Number(article.publishedAt) <= Date.now()).sort((a, b) => Number(b.publishedAt) - Number(a.publishedAt)).slice(0, 5), rejectionDecisions = {}, rows = await sourceRowsToPersist(selectedId, sourceArticles, 0, 0, null, null, true, rejectionDecisions);
     await MMPDB.putMany(rows);
-    await MMPDB.rememberSourceArticles(selectedId, sourceArticles, { ...sourceHistoryMetadata(source, check.method, "Manuel"), acquiredCanonicalUrls: rows.map(row => row.canonicalUrl) });
+    await MMPDB.rememberSourceArticles(selectedId, sourceArticles, { ...sourceHistoryMetadata(source, check.method, "Manuel"), rejectionDecisions, acquiredCanonicalUrls: rows.map(row => row.canonicalUrl) });
     if (check.method === "html") await clearOrphanedReadingStates(await MMPDB.reconcileSourceArticles(source.id, sourceArticles), source.id, sourceArticles);
     source.method = check.method;
     source.feedUrl = selectedSource.feedUrl || "";
     source.extractionProfile = check.extractionProfile || (check.method === "html" ? null : structuredExtractionProfile(source, sourceArticles));
     source.lastExtractionDiagnostics = check.extractionDiagnostics || null;
+    source.dateReliabilityBaseline = check.dateReliability ? {
+      sampleCount: check.dateReliability.sampleCount, reliableCount: check.dateReliability.reliableCount,
+      rate: check.dateReliability.rate, method: check.dateReliability.method || check.method
+    } : null;
     source.enabled = source.extractionProfile?.refreshable !== false;
     source.status = "ok";
     source.lastSync = Date.now();
@@ -3133,7 +3381,7 @@ browser.runtime.onMessage.addListener((msg, sender) => (async () => {
   if (msg.type === "saveSettings") { const current = await state(), { retentionDays, archiveRetentionDays, laterRetentionDays, ...wall } = msg.settings, stored = await browser.storage.local.get({ settings: MMP.DEFAULTS.settings }); const wallSettings = { ...current.wallSettings, [current.activeWallId]: { ...defaultWallSettings(), ...wall } }; await browser.storage.local.set({ settings: { ...stored.settings, retentionDays: Math.max(1, Number(retentionDays ?? stored.settings.retentionDays) || 30), archiveRetentionDays: Math.max(1, Number(archiveRetentionDays ?? stored.settings.archiveRetentionDays ?? retentionDays) || 2), laterRetentionDays: Math.max(1, Number(laterRetentionDays ?? stored.settings.laterRetentionDays ?? retentionDays) || 90) }, wallSettings }); return true; }
   if (msg.type === "setSourceWalls") { const current = await state(), source = current.sources.find(s => s.id === msg.sourceId), wallIds = [...new Set(msg.wallIds || [])]; if (!source) throw new Error("Source introuvable."); if (!wallIds.length || wallIds.some(id => !current.walls.some(w => w.id === id))) throw new Error("Choisissez au moins un mur valide."); source.wallIds = wallIds; await browser.storage.local.set({ sources: current.sources }); browser.runtime.sendMessage({ type: "articlesUpdated" }).catch(() => {}); browser.runtime.sendMessage({ type: "sourcesUpdated" }).catch(() => {}); return source; }
   if (msg.type === "saveSources") { const current = await state(), valid = new Set(current.walls.map(w => w.id)); for (const source of msg.sources) if (!source.wallIds?.length || source.wallIds.some(id => !valid.has(id))) throw new Error("Chaque source doit être associée à au moins un mur valide."); const retained = new Set(msg.sources.map(source => source.id)); for (const source of current.sources) if (!retained.has(source.id)) await clearOrphanedReadingStates(await MMPDB.reconcileSourceArticles(source.id), source.id); await browser.storage.local.set({ sources: msg.sources }); browser.runtime.sendMessage({ type: "articlesUpdated" }).catch(() => {}); browser.runtime.sendMessage({ type: "sourcesUpdated" }).catch(() => {}); return true; }
-})().catch(e => ({ error: e.message || String(e) })));
+})().catch(e => ({ error: e.message || String(e), diagnostics: e.diagnostics || null })));
 browser.alarms.onAlarm.addListener(alarm => { if (alarm.name === ALARM) refreshAll().catch(console.error); });
 async function init() {
   // state() normalizes and persists the global settings and per-wall settings.

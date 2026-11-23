@@ -393,7 +393,7 @@ const MMP = (() => {
       const escapedTextContent = contentText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
       const rawSummary = String(item.summary || item.content_text || "").trim() || contentHtml.replace(/<[^>]*>/g, " ");
       const summary = decodeHtmlEntities(rawSummary.replace(/\s+/g, " ").trim()).slice(0, 1200);
-      const publishedAt = Date.parse(item.date_published || "");
+      const publishedAt = publicationDate(item.date_published || "", feedUrl);
       const authors = [].concat(item.authors || item.author || []).map(author => typeof author === "string" ? author : author?.name || "").filter(Boolean);
       const tags = [].concat(item.tags || []).map(tag => typeof tag === "string" ? tag : "").filter(Boolean);
       const image = cleanUrl(item.image || item.banner_image || imageAttachment?.url || "", feedUrl);
@@ -420,8 +420,9 @@ const MMP = (() => {
     } catch { return NaN; }
   }
   function publicationDateFromText(value) {
-    const input = normalizeText(value).replace(/[’]/g, "'").replace(/\s+/g, " ").trim();
-    const months = { january: 1, jan: 1, janvier: 1, janv: 1, february: 2, feb: 2, fevrier: 2, fevr: 2, march: 3, mar: 3, mars: 3, april: 4, apr: 4, avril: 4, avr: 4, may: 5, mai: 5, june: 6, jun: 6, juin: 6, july: 7, jul: 7, juillet: 7, juil: 7, august: 8, aug: 8, aout: 8, september: 9, sep: 9, sept: 9, octobre: 10, oct: 10, october: 10, november: 11, nov: 11, decembre: 12, dec: 12, december: 12 };
+    const input = normalizeText(value).replace(/[’]/g, "'").replace(/\s+/g, " ").trim()
+      .replace(/^(?:lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|monday|tuesday|wednesday|thursday|friday|saturday|sunday),?\s+/i, "");
+    const months = { january: 1, jan: 1, janvier: 1, janv: 1, february: 2, feb: 2, fevrier: 2, fevr: 2, march: 3, mar: 3, mars: 3, april: 4, apr: 4, avril: 4, avr: 4, may: 5, mai: 5, june: 6, jun: 6, juin: 6, july: 7, jul: 7, juillet: 7, juil: 7, august: 8, aug: 8, aout: 8, september: 9, sep: 9, sept: 9, septembre: 9, octobre: 10, oct: 10, october: 10, november: 11, nov: 11, novembre: 11, decembre: 12, dec: 12, december: 12 };
     let match = input.match(/^([\p{L}.]+)\s+(\d{1,2}),?\s+(\d{4})$/u), day, month, year;
     if (match) {
       month = months[match[1].replace(/\.$/, "")]; day = Number(match[2]); year = Number(match[3]);
@@ -437,22 +438,58 @@ const MMP = (() => {
   }
   function publicationDate(value, pageUrl = "") {
     const input = String(value || "").trim();
+    const isoCalendar = input.match(/^(\d{4})-(\d{2})-(\d{2})(?=$|[T\s])/);
+    if (isoCalendar) {
+      const [, year, month, day] = isoCalendar.map(Number);
+      const check = new Date(Date.UTC(year, month - 1, day));
+      if (check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 || check.getUTCDate() !== day) return NaN;
+    }
+    if (/(?:Z|[+-]\d{2}:?\d{2}|\b(?:UTC|GMT)(?:\s*[+-]\d{1,2}(?::?\d{2})?)?)\s*$/i.test(input)) {
+      const zoned = Date.parse(input);
+      if (Number.isFinite(zoned)) return zoned;
+    }
+    const numericDate = input.match(/(\d{1,2})[./](\d{1,2})[./](\d{4})(?:\s*(?:à|T)?\s*(\d{1,2})\s*[:h]\s*(\d{2})(?::(\d{2}))?)?/iu);
+    if (numericDate) {
+      const [, dayText, monthText, yearText, hourText, minuteText, secondText = "0"] = numericDate;
+      const [day, month, year, hour, minute, second] = [dayText, monthText, yearText, hourText || "0", minuteText || "0", secondText].map(Number);
+      const date = hourText ? new Date(year, month - 1, day, hour, minute, second) : new Date(Date.UTC(year, month - 1, day));
+      const actual = hourText ? [date.getFullYear(), date.getMonth(), date.getDate()] : [date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()];
+      if (actual[0] !== year || actual[1] !== month - 1 || actual[2] !== day || hour > 23 || minute > 59 || second > 59) return NaN;
+      return date.getTime();
+    }
     const match = input.match(/^(\d{4})-(\d{2})-(\d{2})[ T]\s*(?:à\s*)?(\d{1,2}):(\d{2})(?::(\d{2}))?$/i);
     if (match) {
       const [, year, month, day, hour, minute, second = "0"] = match;
       const [y, m, d, h, min, sec] = [year, month, day, hour, minute, second].map(Number);
       const check = new Date(Date.UTC(y, m - 1, d));
       if (check.getUTCFullYear() !== y || check.getUTCMonth() !== m - 1 || check.getUTCDate() !== d || h > 23 || min > 59 || sec > 59) return NaN;
-      let host = "";
-      try { host = new URL(pageUrl).hostname.toLowerCase(); } catch {}
-      const isXinhua = /(^|\.)news\.cn$/.test(host) || /(^|\.)xinhuanet\.com$/.test(host);
-      return Date.parse(`${year}-${month}-${day}T${hour.padStart(2, "0")}:${minute}:${String(sec).padStart(2, "0")}${isXinhua ? "+08:00" : ""}`);
+      // Xinhua's French pages publish Beijing local time without an offset.
+      // Keep other publishers timezone-neutral unless the page supplies one.
+      let publisherZone = "";
+      try { if (/(?:^|\.)news\.cn$/i.test(new URL(pageUrl).hostname)) publisherZone = "+08:00"; } catch {}
+      return Date.parse(`${year}-${month}-${day}T${hour.padStart(2, "0")}:${minute}:${String(sec).padStart(2, "0")}${publisherZone}`);
     }
     const textualDate = publicationDateFromText(input);
     return Number.isFinite(textualDate) ? textualDate : Date.parse(input);
   }
   function publicationDatePrecision(value) {
-    return /\d{1,2}:\d{2}/.test(String(value || "")) ? "instant" : "day";
+    return /\d{1,2}\s*(?::|h)\s*\d{2}/i.test(String(value || "")) ? "instant" : "day";
+  }
+  function assessPublicationDates(articles, sampleLimit = 5) {
+    const rows = Array.isArray(articles) ? articles.filter(article => article?.canonicalUrl) : [];
+    const limit = Math.max(1, Math.min(5, Number(sampleLimit) || 5));
+    const indexes = rows.length <= limit
+      ? rows.map((_, index) => index)
+      : limit === 1 ? [0] : Array.from({ length: limit }, (_, index) => Math.round(index * (rows.length - 1) / (limit - 1)));
+    const sample = [...new Set(indexes)].map(index => rows[index]).filter(Boolean);
+    const dated = sample.filter(article => article.dateIsFallback !== true && Number.isFinite(Number(article.publishedAt)) && Number(article.publishedAt) > 0 && Number(article.publishedAt) <= Date.now());
+    const fallback = sample.filter(article => article.dateIsFallback === true);
+    const rate = sample.length ? dated.length / sample.length : 0;
+    // A strict majority is the smallest threshold that resists one-off
+    // failures while allowing some articles to omit dates; fewer than two
+    // samples cannot establish that the source is repeatable.
+    const minimumReliable = Math.floor(sample.length / 2) + 1;
+    return { sampleCount: sample.length, reliableCount: dated.length, fallbackCount: fallback.length, urlOnlyCount: fallback.filter(article => article.datePrecision === "day").length, rate, minimumReliable, reliable: sample.length >= 2 && dated.length >= minimumReliable, sampleUrls: sample.map(article => article.canonicalUrl) };
   }
   const HTML_PROFILE_VERSION = 1;
   function profileSelector(node, within) {
@@ -478,7 +515,7 @@ const MMP = (() => {
       node: anchor,
       url: cleanUrl(anchor.getAttribute("href"), pageUrl),
       title: text(anchor).replace(/\s+/g, " ").trim() || anchor.getAttribute("title") || ""
-    })).filter(item => item.url && item.url !== page);
+    })).filter(item => item.url && item.url !== page && !isNavigationLink(item.node));
     const links = [...new Map(anchors.map(item => [item.url, item])).values()];
     const cardText = text(card).replace(/\s+/g, " ").trim();
     if (links.length !== 1 || cardText.length < 20 || cardText.length > 3000) return null;
@@ -503,6 +540,21 @@ const MMP = (() => {
       catch { return false; }
     }) ? selector : "";
   }
+  function isNavigationLink(anchor) {
+    if (!anchor) return false;
+    if (String(anchor.getAttribute?.("rel") || "").split(/\s+/).some(value => /^(?:next|prev|previous)$/i.test(value))) return true;
+    const linkLabel = [anchor.getAttribute?.("aria-label"), anchor.getAttribute?.("title"), text(anchor)].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+    if (/^(?:voir|afficher|charger)\s+plus(?:\s+(?:de|d['’])\s+(?:contenus?|articles?|résultats?))?(?:\s*:\s*.*)?$|^(?:load|show)\s+more$|^(?:page\s+)?(?:suivante|précédente|next|previous)(?:\s+page)?$/i.test(linkLabel)) return true;
+    for (let node = anchor; node; node = node.parentElement) {
+      const tag = String(node.localName || node.nodeName || "").toLowerCase();
+      if (tag === "nav") return true;
+      const role = String(node.getAttribute?.("role") || "").toLowerCase();
+      if (["navigation", "menu", "menubar"].includes(role)) return true;
+      const labels = [node.getAttribute?.("class"), node.getAttribute?.("id"), node.getAttribute?.("aria-label")].filter(Boolean).join(" ");
+      if (/(?:^|[\s_-])(?:nav(?:igation)?|navbar|menu|pagination|pager|breadcrumb|breadcrumbs)(?:$|[\s_-])/i.test(labels)) return true;
+    }
+    return false;
+  }
   function extractHtmlPublication(html, pageUrl, source) {
     const doc = new DOMParser().parseFromString(html, "text/html"), matches = [];
     const articleTypes = new Set(["article", "newsarticle", "reportagenewsarticle", "analysisnewsarticle", "askpublicnewsarticle", "backgroundnewsarticle", "opinionnewsarticle", "reviewnewsarticle", "blogposting", "liveblogposting", "report", "scholarlyarticle", "medicalscholarlyarticle", "techarticle", "apireference", "socialmediaposting", "discussionforumposting"]);
@@ -521,14 +573,43 @@ const MMP = (() => {
     const schema = matches.find(item => String(item.headline || item.name || "").trim() && schemaUrl(item) === pageCanonical)
       || matches.find(item => String(item.headline || item.name || "").trim());
     const meta = selector => doc.querySelector(selector)?.getAttribute("content") || "";
-    const published = schema?.datePublished || schema?.dateCreated || meta('meta[property="article:published_time"]') || doc.querySelector('[itemprop="datePublished"]')?.getAttribute("content") || "";
+    const itemPropDate = doc.querySelector('[itemprop="datePublished"]');
+    const titleNode = doc.querySelector("article h1, main h1, h1");
+    const publicationMetadataNodes = [];
+    const isPublicationMetadataNode = node => {
+      const tag = String(node?.localName || node?.nodeName || "").toLowerCase();
+      const classes = String(node?.getAttribute?.("class") || "");
+      const itemprop = String(node?.getAttribute?.("itemprop") || "");
+      if (/event|startdate|enddate|schedule|availability/i.test(`${classes} ${itemprop}`)) return false;
+      return ["small", "time"].includes(tag) || /date|time|published|publication|byline|meta/i.test(classes) || node?.getAttribute?.("itemprop") === "datePublished";
+    };
+    // Inspect only metadata adjacent to the headline or within its header.
+    // Dates elsewhere in an article can refer to an event rather than publication.
+    for (let node = titleNode, depth = 0; node && depth < 3; node = node.parentElement, depth++) {
+      let sibling = node.nextElementSibling, count = 0;
+      while (sibling && count < 3 && isPublicationMetadataNode(sibling)) {
+        publicationMetadataNodes.push(sibling); sibling = sibling.nextElementSibling; count++;
+      }
+    }
+    const articleHeader = titleNode?.closest?.("header");
+    if (articleHeader) publicationMetadataNodes.push(...articleHeader.querySelectorAll('time[datetime], time, small, [itemprop="datePublished"], [class*="time" i], [class*="date" i]'));
+    const scopedTime = articleHeader?.querySelector?.("time[datetime]");
+    const visiblePublicationDate = [...new Set(publicationMetadataNodes)]
+      .map(node => node.getAttribute("datetime") || node.getAttribute("content") || node.textContent || "")
+      .map(value => String(value).replace(/\s+/g, " ").trim())
+      .map(value => value.match(/\b\d{4}-\d{2}-\d{2}(?:\s*(?:à|T)\s*\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?/i)?.[0] || value.match(/\d{1,2}[./]\d{1,2}[./]\d{4}(?:\s*(?:à|T)?\s*\d{1,2}\s*[:h]\s*\d{2}(?::\d{2})?)?/i)?.[0] || value)
+      .find(value => Number.isFinite(publicationDate(value, pageUrl))) || "";
+    const publisherVisibleTimeNode = doc.querySelector(".info .time");
+    const publisherVisibleTime = String(publisherVisibleTimeNode?.textContent || "").match(/\b\d{4}-\d{2}-\d{2}\s*(?:à|T)\s*\d{1,2}:\d{2}(?::\d{2})?/i)?.[0] || "";
+    const published = [schema?.datePublished, meta('meta[property="article:published_time"]'), itemPropDate?.getAttribute("content"), itemPropDate?.getAttribute("datetime"), scopedTime?.getAttribute("datetime"), publisherVisibleTime, visiblePublicationDate, meta('meta[name="publishdate" i]')]
+      .find(value => value && Number.isFinite(publicationDate(value, pageUrl))) || "";
     const canonical = cleanUrl(schema ? schemaUrl(schema) : doc.querySelector('link[rel~="canonical"][href]')?.getAttribute("href") || pageUrl, pageUrl);
     const structuredOrArticleSignal = !!schema || !!published || !!meta('meta[property="article:author"]') || !!doc.querySelector('article [itemprop="headline"], article h1');
     if (!structuredOrArticleSignal) return { article: null, diagnostics: { singlePublication: false, reason: "Aucun signal structuré ne prouve qu’il s’agit d’une publication isolée." } };
     const titleCandidates = [schema?.headline, schema?.name, meta('meta[property="og:title"]'), meta('meta[name="twitter:title"]'), doc.querySelector("article h1, main h1, h1")?.textContent, doc.title];
     const title = recoverArticleTitle(titleCandidates.find(candidate => candidate && !/^(?:la\s+)?(?:suite|lire\s+la\s+suite|en\s+savoir\s+plus|read\s+more)\s*[»›…]*$/i.test(String(candidate).trim())) || titleCandidates.find(Boolean), pageUrl);
     if (!title || title.length > 300) return { article: null, diagnostics: { singlePublication: false, reason: "La publication isolée ne fournit pas de titre exploitable." } };
-    const rawDate = Date.parse(published), hasDate = !!published && Number.isFinite(rawDate);
+    const rawDate = publicationDate(published, pageUrl), hasDate = !!published && Number.isFinite(rawDate);
     const rawImage = schema?.image?.url || (Array.isArray(schema?.image) ? schema.image[0]?.url || schema.image[0] : schema?.image) || meta('meta[property="og:image"]') || meta('meta[name="twitter:image"]');
     const authorValue = schema?.author;
     const authors = [].concat(authorValue || []).map(author => typeof author === "string" ? author : author?.name || "").filter(Boolean);
@@ -541,7 +622,7 @@ const MMP = (() => {
       id: stableId(canonical), sourceId: source.id, sourceOrder: 0, sourceOrderSourceId: source.id, canonicalUrl: canonical,
       title, summary: String(schema?.description || meta('meta[property="og:description"]') || meta('meta[name="description"]') || "").replace(/\s+/g, " ").trim().slice(0, 1200),
       image, author, categories, keywords: [...new Set(keywords)], video, publishedAt: hasDate ? rawDate : Date.now(),
-      dateIsFallback: !hasDate, datePrecision: hasDate ? (/^\d{4}-\d\d-\d\d(?:$|T)/.test(published) ? (published.includes("T") ? "instant" : "day") : "instant") : "unknown",
+      dateIsFallback: !hasDate, datePrecision: hasDate ? publicationDatePrecision(published) : "unknown",
       cinemaHint: false, discoveredAt: Date.now(), fetchedAt: Date.now()
     };
     return {
@@ -568,7 +649,7 @@ const MMP = (() => {
             categories: [].concat(value.articleSection || []).map(item => typeof item === "string" ? item : item?.name || "").filter(Boolean),
             summary: String(value.description || value.articleBody || "").replace(/\s+/g, " ").trim().slice(0, 1200),
             image: cleanUrl(image, pageUrl),
-            video: cleanUrl(video, pageUrl), date: Date.parse(value.datePublished || ""),
+            video: cleanUrl(video, pageUrl), date: publicationDate(value.datePublished || "", pageUrl),
             datePrecision: /^\d{4}-\d\d-\d\d(?:$|T)/.test(String(value.datePublished || "")) ? (String(value.datePublished).includes("T") ? "instant" : "day") : "instant"
           });
         }
@@ -599,6 +680,7 @@ const MMP = (() => {
     for (const item of items) {
       try {
         const links = [...item.querySelectorAll(profile.linkSelector)];
+        if (links.some(isNavigationLink)) continue;
         const urls = [...new Set(links.map(link => cleanUrl(link.getAttribute("href"), pageUrl)).filter(url => url && url !== cleanUrl(pageUrl)))];
         const titleNode = item.querySelector(profile.titleSelector);
         const title = recoverArticleTitle(text(titleNode), urls[0]);
@@ -731,6 +813,7 @@ const MMP = (() => {
     };
     // Find editorial cards by their structure, regardless of publisher or URL.
     for (const anchor of doc.querySelectorAll("main a[href], [role='main'] a[href], .main-content a[href]")) {
+      if (isNavigationLink(anchor)) continue;
       const url = cleanUrl(anchor.getAttribute("href"), pageUrl);
       if (!url || url === cleanUrl(pageUrl) || new URL(url).origin !== new URL(pageUrl).origin) continue;
       const dateSelector = 'time[datetime], [itemprop*="datePublished" i], [property*="published_time" i], [class*="date" i], [class*="time" i]';
@@ -820,7 +903,7 @@ const MMP = (() => {
             const author = [].concat(item.author || []).map(value => typeof value === "string" ? value : value?.name || "").filter(Boolean).join(", ");
             const keywords = [].concat(item.keywords || []).flatMap(value => typeof value === "string" ? value.split(/[,;|]/) : []).map(value => value.trim()).filter(Boolean);
             const videoValue = [].concat(item.video || []).map(value => typeof value === "string" ? value : value?.contentUrl || value?.embedUrl || value?.url || "").find(Boolean) || "";
-            if (url && title && url !== cleanUrl(pageUrl)) found.push({ url, title, summary: String(item.description || item.articleBody || "").slice(0,1200), image: schemaImage(item.image || item.thumbnailUrl), author, video: cleanUrl(videoValue, pageUrl), keywords, date: Date.parse(dateText), datePrecision: /^\d{4}-\d\d-\d\d(?:$|T)/.test(dateText) ? (dateText.includes("T") ? "instant" : "day") : "instant", categories: [].concat(item.articleSection || []).map(value => typeof value === "string" ? value : value?.name || "").filter(Boolean) });
+            if (url && title && url !== cleanUrl(pageUrl)) found.push({ url, title, summary: String(item.description || item.articleBody || "").slice(0,1200), image: schemaImage(item.image || item.thumbnailUrl), author, video: cleanUrl(videoValue, pageUrl), keywords, date: publicationDate(dateText, pageUrl), datePrecision: /^\d{4}-\d\d-\d\d(?:$|T)/.test(dateText) ? (dateText.includes("T") ? "instant" : "day") : "instant", categories: [].concat(item.articleSection || []).map(value => typeof value === "string" ? value : value?.name || "").filter(Boolean) });
           }
           if (item.itemListElement) visit(item.itemListElement);
           if (item.item) visit(item.item);
@@ -879,6 +962,7 @@ const MMP = (() => {
     }
     const linkSelector = agendaUrl ? "a[href*='/agenda/']" : "main article a[href], article a[href]";
     for (const a of doc.querySelectorAll(linkSelector)) {
+      if (isNavigationLink(a)) continue;
       const url = cleanUrl(a.getAttribute("href"), pageUrl), title = text(a).replace(/\s+/g," ").trim();
       if (url && title.length > 8 && url !== cleanUrl(pageUrl)) {
         const details = agendaUrl ? eventDetails(a) : {};
@@ -891,6 +975,7 @@ const MMP = (() => {
     // Recognize dated article links without relying on a publisher hostname.
     {
       for (const a of doc.querySelectorAll("a[href]")) {
+        if (isNavigationLink(a)) continue;
         const url = cleanUrl(a.getAttribute("href"), pageUrl);
         const title = text(a).replace(/\s+/g, " ").trim() || a.getAttribute("title") || "";
         if (url && /\/\d{8}\/[a-f\d]{32}\/c\.html(?:$|[?#])/i.test(url) && title.length > 10 &&
@@ -944,5 +1029,5 @@ const MMP = (() => {
   const cinemaTerms=["film","films","cinema","cine","movie","movies","serie","series",'"tv shows"',"stream","streaming","vod","svod"];
   const isCinemaSignal = value => cinemaTerms.some(term=>matchTerm(value,term));
   const isCinemaWall = name => isCinemaSignal(name);
-  return { DEFAULTS, normalizeText, cleanUrl, normalizeContentUrl, stableId, decodeHtmlEntities, recoverArticleTitle, normalizeFeedXml, parseFeed, parseJsonFeed, parseHtmlArticles, learnHtmlProfile, extractHtmlProfile, extractHtmlPublication, publicationDateFromUrl, publicationDateFromText, sanitizeArticleHtml, selectBestImage, extractVideo, videoEmbedUrl, probeVideoPage, matchTerm, isCinemaWall, isCinemaSignal };
+  return { DEFAULTS, normalizeText, cleanUrl, normalizeContentUrl, stableId, decodeHtmlEntities, recoverArticleTitle, normalizeFeedXml, parseFeed, parseJsonFeed, parseHtmlArticles, learnHtmlProfile, extractHtmlProfile, extractHtmlPublication, publicationDate, publicationDateFromUrl, publicationDateFromText, assessPublicationDates, sanitizeArticleHtml, selectBestImage, extractVideo, videoEmbedUrl, probeVideoPage, matchTerm, isCinemaWall, isCinemaSignal };
 })();

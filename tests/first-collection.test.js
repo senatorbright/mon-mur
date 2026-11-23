@@ -5,89 +5,66 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const source = fs.readFileSync(path.join(__dirname, "../js/background.js"), "utf8");
-const start = source.indexOf("const FIRST_COLLECTION_LOOKBACK_MS");
-const end = source.indexOf("async function fetchText", start);
+const start = source.indexOf("function configuredLookbackMs(");
+const end = source.indexOf("async function fetchText(", start);
 assert.notEqual(start, -1);
 assert.notEqual(end, -1);
 
-function makeHarness() {
-  const history = new Set();
-  const stored = new Set();
+function makeHarness(refreshMinutes = 15) {
+  const history = new Map(), expired = new Set(), stored = new Map();
   const context = vm.createContext({
     Date, Map, Set, Promise, Number,
+    DEFAULT_REFRESH_INTERVAL: 15,
+    REFRESH_INTERVALS: [5, 10, 15, 30, 60, 1440],
+    refreshInterval: async () => refreshMinutes,
     MMP: { normalizeText: value => String(value || "").toLowerCase(), matchTerm: (text, term) => String(text).toLowerCase().includes(String(term).toLowerCase()) },
     MMPDB: {
-      sourceHistory: async (_id, urls) => new Set(urls.filter(url => history.has(url))),
-      expiredArticleUrls: async () => new Set(),
-      all: async () => [...stored].map(canonicalUrl => ({ canonicalUrl }))
+      sourceHistory: async (_id, urls, acquiredOnly = false) => new Set(urls.filter(url => history.has(url) && (!acquiredOnly || history.get(url) !== false))),
+      expiredArticleUrls: async urls => new Set(urls.filter(url => expired.has(url))),
+      all: async () => [...stored.values()]
     }
   });
   vm.runInContext(source.slice(start, end), context);
   return {
-    select: (rows, sync, startedAt) => vm.runInContext(`sourceRowsToPersist("source", ${JSON.stringify(rows)}, ${sync}, ${startedAt})`, context),
-    history, context
+    history, expired, stored, context,
+    select: (rows, sync, startedAt, wallCutoffs = null, diagnostics = null, acquiredOnly = false) => {
+      context.testRows = rows; context.testWallCutoffs = wallCutoffs; context.testDiagnostics = diagnostics;
+      return vm.runInContext(`sourceRowsToPersist("source", testRows, ${sync}, ${startedAt}, testWallCutoffs, testDiagnostics, ${acquiredOnly})`, context);
+    }
   };
 }
 
-test("first source collection accepts reliable publications from the last ten hours only", async () => {
-  const { select } = makeHarness();
-  const startedAt = 10_000_000_000_000;
+test("first collection uses the configured refresh lookback and excludes fallback dates", async () => {
+  const { select } = makeHarness(15), startedAt = Date.now();
   const rows = [
-    { canonicalUrl: "https://example.test/one-hour", publishedAt: startedAt - 60 * 60 * 1000, dateIsFallback: false },
-    { canonicalUrl: "https://example.test/nine-hours", publishedAt: startedAt - 9 * 60 * 60 * 1000, dateIsFallback: false },
-    { canonicalUrl: "https://example.test/eleven-hours", publishedAt: startedAt - 11 * 60 * 60 * 1000, dateIsFallback: false },
-    { canonicalUrl: "https://example.test/no-date", publishedAt: startedAt, dateIsFallback: true }
+    { canonicalUrl: "https://example.test/fresh", publishedAt: startedAt - 5 * 60_000, dateIsFallback: false, datePrecision: "instant" },
+    { canonicalUrl: "https://example.test/too-old", publishedAt: startedAt - 16 * 60_000, dateIsFallback: false, datePrecision: "instant" },
+    { canonicalUrl: "https://example.test/no-date", publishedAt: startedAt, dateIsFallback: true, datePrecision: "unknown" }
   ];
   const kept = await select(rows, 0, startedAt);
-  assert.deepEqual(JSON.parse(JSON.stringify(kept)).map(row => row.canonicalUrl), ["https://example.test/one-hour", "https://example.test/nine-hours"]);
+  assert.deepEqual(JSON.parse(JSON.stringify(kept)).map(row => row.canonicalUrl), ["https://example.test/fresh"]);
 });
 
-test("a first-collection exclusion stays seen and cannot reappear on the next sync", async () => {
-  const { select, history } = makeHarness();
-  const startedAt = 10_000_000_000_000;
-  const old = { canonicalUrl: "https://example.test/old", publishedAt: startedAt - 11 * 60 * 60 * 1000, dateIsFallback: false };
-  assert.equal((await select([old], 0, startedAt)).length, 0);
-  history.add(old.canonicalUrl); // Mirrors rememberSourceArticles(rows) after a successful collection.
-  assert.equal((await select([old], startedAt + 1000, 0)).length, 0);
-});
-
-test("first collection widens the cached candidate window in two-hour steps and respects wall filters", () => {
+test("first-collection wall cutoffs use each wall's configured lookback", () => {
   const { context } = makeHarness();
-  const startedAt = 10_000_000_000_000;
-  const wall = { id: "wall", name: "Actus" };
-  const source = { id: "source", wallIds: [wall.id] };
-  const candidate = { sourceId: "source", sourceIds: ["source"], title: "Publication", publishedAt: startedAt - 13 * 3600000, dateIsFallback: false };
-  const current = { walls: [wall], wallSettings: { wall: { retentionDays: 3, excludedKeywords: [], excludedCategories: [] } } };
-  const cutoffs = vm.runInContext(`firstCollectionCutoffs(${JSON.stringify(source)}, ${JSON.stringify([candidate])}, ${JSON.stringify(current)}, [], ${startedAt})`, context);
-  assert.equal(cutoffs.get("wall"), startedAt - 14 * 3600000);
-  current.wallSettings.wall.excludedKeywords = ["publication"];
-  const excluded = vm.runInContext(`firstCollectionCutoffs(${JSON.stringify(source)}, ${JSON.stringify([candidate])}, ${JSON.stringify(current)}, [], ${startedAt})`, context);
-  assert.equal(excluded.get("wall"), startedAt - 72 * 3600000);
+  const startedAt = Date.now(), wall = { id: "wall", name: "Actus" }, source = { id: "source", wallIds: [wall.id] };
+  const current = { refreshIntervalMinutes: 10, walls: [wall], wallSettings: { wall: { excludedKeywords: [], excludedCategories: [] } } };
+  const cutoffs = vm.runInContext(`firstCollectionCutoffs(${JSON.stringify(source)}, [], ${JSON.stringify(current)}, [], ${startedAt})`, context);
+  assert.equal(cutoffs.get("wall"), startedAt - 10 * 60_000);
 });
 
-test("first collection keeps widening when its recent candidates are already seen or expired", () => {
-  const { context } = makeHarness();
-  const startedAt = 10_000_000_000_000;
-  const wall = { id: "wall", name: "Actus" };
-  const source = { id: "source", wallIds: [wall.id] };
-  const recent = { canonicalUrl: "https://example.test/recent", sourceId: "source", title: "Déjà vu", publishedAt: startedAt - 11 * 3600000, dateIsFallback: false };
-  const older = { canonicalUrl: "https://example.test/older", sourceId: "source", title: "À récupérer", publishedAt: startedAt - 13 * 3600000, dateIsFallback: false };
-  const current = { walls: [wall], wallSettings: { wall: { retentionDays: 3, excludedKeywords: [], excludedCategories: [] } } };
-  context.unavailableUrls = new Set([recent.canonicalUrl]);
-  const cutoffs = vm.runInContext(`firstCollectionCutoffs(${JSON.stringify(source)}, ${JSON.stringify([recent, older])}, ${JSON.stringify(current)}, [], ${startedAt}, unavailableUrls)`, context);
-  assert.equal(cutoffs.get("wall"), startedAt - 14 * 3600000);
+test("explicit day-only dates qualify when their calendar day overlaps the freshness window", async () => {
+  const { select } = makeHarness(), now = Date.now();
+  const row = { canonicalUrl: "https://example.test/day-only", publishedAt: now - 60_000, dateIsFallback: false, datePrecision: "day" };
+  assert.deepEqual(JSON.parse(JSON.stringify(await select([row], now - 120_000, 0))), [row]);
+  const stale = { ...row, canonicalUrl: "https://example.test/stale-day", publishedAt: now - 3 * 86400000 };
+  assert.deepEqual(JSON.parse(JSON.stringify(await select([stale], now - 120_000, 0))), []);
+  assert.deepEqual(JSON.parse(JSON.stringify(await select([row], now - 120_000, 0, null, null, true))), [row]);
 });
 
-test("the widened first-collection cutoff is also used when a source is rediscovered", async () => {
-  const { context, history, select } = makeHarness();
-  const startedAt = 10_000_000_000_000;
-  const wall = { id: "wall", name: "Actus" };
-  const source = { id: "source", wallIds: [wall.id] };
-  const alreadySeen = { canonicalUrl: "https://example.test/seen", sourceId: "source", title: "Déjà vu", publishedAt: startedAt - 11 * 3600000, dateIsFallback: false };
-  const recoverable = { canonicalUrl: "https://example.test/recoverable", sourceId: "source", title: "À récupérer", publishedAt: startedAt - 13 * 3600000, dateIsFallback: false };
-  const current = { walls: [wall], wallSettings: { wall: { retentionDays: 3, excludedKeywords: [], excludedCategories: [] } } };
-  history.add(alreadySeen.canonicalUrl);
-  context.cutoffs = await vm.runInContext(`firstCollectionCutoffsFor(${JSON.stringify(source)}, ${JSON.stringify([alreadySeen, recoverable])}, ${JSON.stringify(current)}, [], ${startedAt})`, context);
-  const kept = await vm.runInContext(`sourceRowsToPersist("source", ${JSON.stringify([alreadySeen, recoverable])}, 0, ${startedAt}, cutoffs)`, context);
-  assert.deepEqual(JSON.parse(JSON.stringify(kept)).map(row => row.canonicalUrl), [recoverable.canonicalUrl]);
+test("a publication at or before the last successful sync remains excluded by the current freshness rule", async () => {
+  const { select } = makeHarness(), now = Date.now(), diagnostics = {};
+  const row = { canonicalUrl: "https://example.test/older-than-sync", publishedAt: now - 120_000, dateIsFallback: false, datePrecision: "instant" };
+  assert.deepEqual(JSON.parse(JSON.stringify(await select([row], now - 60_000, 0, null, diagnostics))), []);
+  assert.equal(diagnostics.olderThanLastSync, 1);
 });
